@@ -1,0 +1,151 @@
+@import "tailwindcss";
+
+/* ══════════════════════════════════════════════════════════
+   HOSxP Oncology Chemo — Design System
+   ──────────────────────────────────────────────────────────
+   Font: Inter + Noto Sans Thai
+   Grid: 8pt system (8, 16, 24, 32px)
+   Palette: Navy primary, Lavender oncology accent
+   Status: Red (hard stop), Amber (warn), Green (safe)
+   ══════════════════════════════════════════════════════════ */
+
+@theme {
+  --font-sans: "Google Sans", "Google Sans Text", "Noto Sans Thai", system-ui, sans-serif;
+
+  /* ── Brand ── */
+  --color-navy: #1A2A3A;
+  --color-navy-light: #243B4F;
+  --color-navy-dark: #0F1C2B;
+
+  /* ── Oncology Identity (Lavender/Purple) ── */
+  --color-onc: #7C6EBF;
+  --color-onc-light: #AEA3D8;
+  --color-onc-bg: #F0EDF8;
+
+  /* ── Functional ── */
+  --color-primary: #4A7BF7;
+  --color-primary-light: #EBF0FF;
+
+  /* ── Status (semantic) ── */
+  --color-danger: #DC2626;
+  --color-danger-bg: #FEF2F2;
+  --color-warning: #F59E0B;
+  --color-warning-bg: #FFFBEB;
+  --color-success: #10B981;
+  --color-success-bg: #ECFDF5;
+  --color-info: #3B82F6;
+  --color-info-bg: #EFF6FF;
+
+  /* ── Surface ── */
+  --color-surface: #FFFFFF;
+  --color-surface-raised: #FFFFFF;
+  --color-background: #E8EDF3;
+  --color-background-alt: #F1F4F9;
+
+  /* ── Text ── */
+  --color-text: #1A2A3A;
+  --color-text-secondary: #5A6B7D;
+  --color-text-muted: #94A3B8;
+  --color-text-inverse: #FFFFFF;
+
+  /* ── Borders ── */
+  --color-border: #E2E8F0;
+  --color-border-light: #F1F5F9;
+}
+
+/* ══════════════════════════════════════════════
+   Base Styles
+   ══════════════════════════════════════════════ */
+body {
+  font-family: "Google Sans", "Google Sans Text", "Noto Sans Thai", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: var(--color-background);
+  color: var(--color-text);
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+/* ══════════════════════════════════════════════
+   Scrollbar (thin, subtle)
+   ══════════════════════════════════════════════ */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+/* ══════════════════════════════════════════════
+   Utility classes for oncology UI
+   ══════════════════════════════════════════════ */
+
+/* Card — white with subtle border + shadow, 16px radius */
+.onc-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 16px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.02);
+}
+
+.onc-card-raised {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-light);
+  border-radius: 16px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06), 0 1px 4px rgba(0, 0, 0, 0.03);
+}
+
+/* Frosted glass */
+.onc-glass {
+  background: rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.7);
+}
+
+/* Alert tiers — ref: spec 3-level alerting */
+.onc-alert-info {
+  background: var(--color-info-bg);
+  border: 1px solid #BFDBFE;
+  border-left: 4px solid var(--color-info);
+  color: #1E40AF;
+}
+
+.onc-alert-warn {
+  background: var(--color-warning-bg);
+  border: 1px solid #FDE68A;
+  border-left: 4px solid var(--color-warning);
+  color: #92400E;
+}
+
+.onc-alert-danger {
+  background: var(--color-danger-bg);
+  border: 1px solid #FECACA;
+  border-left: 4px solid var(--color-danger);
+  color: #991B1B;
+}
+
+/* Touch target for nurse tablet — min 44x44px */
+.onc-touch {
+  min-width: 44px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Skeleton loading */
+.onc-skeleton {
+  background: linear-gradient(90deg, #e2e8f0 25%, #f1f5f9 50%, #e2e8f0 75%);
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.5s ease-in-out infinite;
+  border-radius: 8px;
+}
+
+@keyframes skeleton-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}

@@ -1,0 +1,489 @@
+TLS: HOSxP Oncology Chemo CPOE Module
+0) Metadata
+
+Product/Module Name: HOSxP Oncology – Chemo CPOE
+
+Owner: BMS (HOSxP)
+
+Target Users: แพทย์, เภสัชกร, พยาบาลเคมีบำบัด, เจ้าหน้าที่ห้องผสมยา, การเงิน, ผู้ดูแลระบบ
+
+Deployment: On-prem / Private cloud ตามไซต์ รพ.
+
+Environments: dev / uat / prod
+
+Compliance: PDPA, Audit Log, Access Control (RBAC)
+
+1) Goals & Non-Goals
+1.1 Goals
+
+สั่งยาเคมีบำบัดแบบ Regimen/Cycle-based ภายใน HIS (ไม่แยกระบบ)
+
+ใช้ข้อมูลเดิมของ HOSxP: HN, VN/AN, drug master, lab, billing, inventory
+
+เพิ่มความปลอดภัยด้วย Clinical Rules + Lab Gate + PIN/e-sign
+
+รองรับ workflow จริง: Doctor → Pharmacist verify → Compounding → Administer
+
+ติดตามสถานะ/รายงาน/แดชบอร์ด
+
+1.2 Non-Goals (รอบแรก)
+
+ไม่ทำ AI recommendation ใน Phase 1
+
+ไม่ทำเชื่อมระบบภายนอกทุกชนิด (ยกเว้นจำเป็นตาม site)
+
+ไม่ทำ mobile app ใหม่ (แต่ UI ต้อง responsive)
+
+2) Users, Roles, Permissions (RBAC)
+2.1 Roles
+
+ONC_DOCTOR: สร้าง/แก้ regimen plan, สั่งยา, ยกเลิก, sign
+
+ONC_PHARMACIST: ตรวจสอบคำสั่ง, ปรับ dose ตาม rule/แนะนำ, approve/verify
+
+COMPOUND_TECH: เตรียมผสมยา, บันทึก lot/expiry/waste, สถานะ prepared
+
+CHEMO_NURSE: บันทึกการให้ยา/เวลาจริง/อาการไม่พึงประสงค์, complete administration
+
+BILLING_OFFICER: ตรวจ charge, package mapping, export รายการ
+
+ADMIN: ตั้งค่า master/regimen/rules/thresholds/permissions
+
+2.2 Permission Matrix (ตัวอย่าง)
+
+Doctor: create/submit/cancel order, view all, edit plan before verify
+
+Pharmacist: verify/reject, edit dose (ตาม policy), lock plan after verify
+
+Nurse: administer only verified+prepared
+
+Admin: manage masters & rules, not allowed to sign clinical order
+
+3) Scope of Work (Modules)
+3.1 Core Modules
+
+Oncology Patient Profile
+
+Regimen Master / Template Builder
+
+Chemo Plan (Cycle/Day Scheduler)
+
+Chemo Order Entry (CPOE)
+
+Clinical Rule Engine + Lab Gate
+
+Workflow & Status Tracking
+
+Compounding & Inventory Traceability
+
+Administration Record
+
+Billing/Charge Mapping
+
+Dashboard & Reports
+
+Audit Log & Security
+
+3.2 Integrations with HOSxP Core
+
+Patient/HN, VN/AN
+
+Diagnosis (ICD-10), Procedure (ICD-9-CM / local)
+
+Lab results
+
+Drug master, formulary, allergy
+
+Pharmacy dispensing
+
+Inventory/stock, lot/expiry (ถ้ามี module)
+
+Billing/charge items
+
+User/SSO (ถ้ามี BMS SSO) หรือ user table เดิม
+
+4) High-Level Architecture
+4.1 Target Architecture Options
+
+Option A (Recommended): Embedded Web Module inside HOSxP Web (single domain)
+
+Frontend: React/Vue (ตามมาตรฐานองค์กร) + API
+
+Backend: .NET/Node/Delphi service (ตามสแต็ก BMS) เชื่อม DB HOSxP
+
+Shared Auth: HOSxP session/SSO token
+
+Option B: Server-side module (Delphi/UniGUI) + services
+
+เหมาะถ้า HOSxP core ฝั่ง desktop เด่น แต่ต้องรองรับ web/modern UI เพิ่ม
+
+TLS นี้จะอธิบายแบบ “Web Module + API” เป็นหลัก
+
+4.2 Components
+
+UI: Oncology Web Module
+
+API: Oncology Service API (internal)
+
+DB: Tables ใน schema ของ HOSxP หรือ schema เสริม onc_*
+
+Rule Engine: service/component สำหรับ evaluate rules
+
+Job/Worker: generate schedule, nightly reports, alert queue (optional)
+
+5) Data Model (High-Level)
+
+หมายเหตุ: ชื่อ table เป็นข้อเสนอ สามารถปรับให้เข้ามาตรฐาน HOSxP ได้
+
+5.1 Master Tables
+
+onc_regimen_master
+
+regimen_id (PK), code, name, intent, cancer_type, emetogenic_level, active_flag, version, created_by, created_at
+
+onc_regimen_drug
+
+id (PK), regimen_id (FK), day_no, drug_code (FK drug master), route, base_dose, dose_unit, dose_calc_method (BSA/WEIGHT/FIXED/AUC), infusion_time, premed_flag, sequence_no
+
+onc_rule_master
+
+rule_id, name, type (LAB_GATE/INTERACTION/MAX_DOSE/ALLERGY), severity (INFO/WARN/HARD_STOP), active_flag
+
+onc_rule_condition
+
+rule_id, field (ANC/PLT/CrCl/LFT/etc), operator, value, message
+
+onc_rule_action
+
+rule_id, action (BLOCK/REQUIRE_OVERRIDE/RECOMMEND_ADJUST), payload_json
+
+5.2 Patient/Clinical Tables
+
+onc_patient
+
+hn (PK/FK), cancer_dx_date, primary_site, morphology, stage_tnm, ecog, notes
+
+onc_treatment_plan
+
+plan_id (PK), hn, vn/an, regimen_id, start_date, cycles, cycle_length_days, status (DRAFT/ACTIVE/COMPLETED/CANCELLED), created_by
+
+onc_cycle
+
+cycle_id (PK), plan_id, cycle_no, scheduled_start, actual_start, status
+
+onc_cycle_day
+
+day_id (PK), cycle_id, day_no, scheduled_date, status (PENDING/READY/HELD/DONE)
+
+onc_order_header
+
+order_id (PK), plan_id, cycle_id, day_id, hn, vn/an, order_date, status (DRAFT/SUBMITTED/VERIFIED/PREPARED/ADMINISTERED/CANCELLED), signed_by, signed_at, pin_verified_flag
+
+onc_order_item
+
+item_id (PK), order_id, drug_code, calc_bsa, calc_weight, planned_dose, final_dose, unit, route, infusion_time, note, override_reason, pharmacist_adjust_by
+
+onc_lab_snapshot
+
+snap_id, order_id, anc, plt, hb, cr, ast, alt, tbili, egfr, captured_at
+
+onc_compounding_log
+
+comp_id, order_id, drug_code, lot_no, expiry_date, prepared_qty, waste_qty, prepared_by, prepared_at, double_check_by
+
+onc_admin_record
+
+admin_id, order_id, started_at, ended_at, nurse_by, reaction_note, completed_flag
+
+onc_audit_log
+
+log_id, entity_type, entity_id, action, before_json, after_json, user_id, ip, created_at
+
+5.3 Mapping Tables (Billing/Inventory)
+
+onc_charge_mapping
+
+map_id, regimen_id/drug_code, charge_item_code, qty_rule, payer_rule, active_flag
+
+6) Key Business Rules
+6.1 Safety Gate (Hard Stop)
+
+ไม่มี diagnosis (ICD-10) ใน VN/AN → ห้าม submit chemo order
+
+ไม่มี BSA/Weight ล่าสุดตาม policy → ห้าม submit
+
+LAB_GATE: ANC/PLT/CrCl/LFT ต่ำ/สูงเกิน threshold → BLOCK หรือ REQUIRE_OVERRIDE ตาม rule
+
+แพ้ยา (allergy) ตรงกับ drug_code → BLOCK หรือ override ตามสิทธิ์
+
+หลัง Pharmacist Verify แล้ว:
+
+Doctor แก้ไข dose ได้เฉพาะ “แก้เป็น revision ใหม่” (สร้าง order เวอร์ชันใหม่) เพื่อรักษา auditability
+
+6.2 Dose Calculation (Core)
+
+dose_calc_method:
+
+BSA: dose = base_dose * BSA
+
+WEIGHT: dose = base_dose * weight_kg
+
+AUC: (ถ้าต้องใช้) คำนวณตามสูตรที่ตั้งค่า (ต้องระบุใน regimen)
+
+FIXED: ใช้ planned_dose
+
+Dose rounding:
+
+policy เช่น round to nearest X mg หรือ vial-based rounding (กำหนดได้ใน regimen หรือ global)
+
+6.3 Workflow Status Transition
+
+DRAFT → SUBMITTED (Doctor + PIN)
+
+SUBMITTED → VERIFIED (Pharmacist + PIN/Sign)
+
+VERIFIED → PREPARED (Compounding)
+
+PREPARED → ADMINISTERED (Nurse)
+
+Any state → CANCELLED (ตามสิทธิ์ + PIN + reason required)
+
+HOLD:
+
+day/status = HELD หาก lab fail หรือแพทย์สั่ง hold
+
+7) UI/UX Requirements (Screens)
+7.1 Screen List
+
+Oncology Patient Summary
+
+HN, ข้อมูลมะเร็ง, stage, ECOG, regimen active, timeline
+
+Regimen Master List
+
+CRUD, versioning, active/inactive
+
+Regimen Builder
+
+Day-based grid (Day1/Day8/Day15), add drug, method BSA/WEIGHT, premed
+
+Plan Creator
+
+เลือก regimen → ตั้ง start date, cycles, cycle length → generate schedule
+
+Chemo Order Entry
+
+แสดง cycle/day, drug list, BSA/weight, calculated dose, lab snapshot, warnings
+
+ปุ่ม Submit (ต้อง PIN)
+
+Pharmacist Verification Worklist
+
+queue: SUBMITTED, filter by date/ward/doctor
+
+verify/reject/adjust dose + reason
+
+Compounding Worklist
+
+verified orders, record lot/expiry, prepared/waste, double-check
+
+Administration Screen
+
+start/stop time, adverse reaction, complete
+
+Chemo Dashboard
+
+due today, held, pending verify, pending prepare, pending administer
+
+Reports
+
+drug utilization, regimen counts, turnaround time, cancellations
+
+7.2 UX Constraints
+
+Responsive (รองรับ tablet ใน chemo ward)
+
+ทุก action สำคัญต้อง confirm + reason (สำหรับ cancel/override)
+
+แสดง warning แบบ 3 ระดับ: info/warn/hard stop
+
+8) API Specification (Internal)
+
+รูปแบบ: REST JSON (หรือ GraphQL หากองค์กรใช้)
+ต้องมี auth token จาก HOSxP/SSO
+
+8.1 Core Endpoints
+
+GET /onc/patients/{hn}/summary
+
+GET /onc/regimens
+
+POST /onc/regimens
+
+PUT /onc/regimens/{id}
+
+POST /onc/plans
+
+GET /onc/plans/{planId}
+
+POST /onc/orders/draft
+
+POST /onc/orders/{orderId}/submit (requires PIN)
+
+POST /onc/orders/{orderId}/verify (pharmacist)
+
+POST /onc/orders/{orderId}/prepare
+
+POST /onc/orders/{orderId}/administer
+
+POST /onc/orders/{orderId}/cancel (requires reason + PIN)
+
+POST /onc/rules/evaluate (input: order draft → output: warnings + hard stops)
+
+GET /onc/worklists?role=PHARMACIST&date=YYYY-MM-DD&status=SUBMITTED
+
+8.2 Shared Integration API (HOSxP core)
+
+GET /his/patients/{hn}
+
+GET /his/visits/{vnOrAn}
+
+GET /his/labs?hn=...&vn=...&types=ANC,PLT,Cr,...
+
+GET /his/drugs/{drug_code}
+
+GET /his/allergies/{hn}
+
+POST /his/charges (จาก onc_charge_mapping)
+
+9) Security & Audit
+9.1 Authentication
+
+ใช้ SSO/HOSxP auth token เดิม
+
+ทุก request ต้องมี user_id และ role ใน token/claims
+
+9.2 PIN / e-Sign
+
+PIN ต้อง:
+
+เก็บแบบ hashed + salt
+
+rate limit attempts
+
+require reset workflow
+
+Actions requiring PIN:
+
+submit / verify / cancel / override hard-stop
+
+9.3 Audit Log
+
+ต้องบันทึกอย่างน้อย:
+
+entity, action, before/after, user, timestamp, ip, device (ถ้ามี)
+
+ห้ามแก้ไข audit log (append-only)
+
+10) Non-Functional Requirements
+10.1 Performance
+
+Worklist load < 2s สำหรับ 500 รายการ/วัน
+
+Rule evaluate < 300ms ต่อ order (target)
+
+10.2 Availability
+
+99.5% ในเวลาราชการ (หรือ site policy)
+
+มี graceful degradation ถ้า lab service ล่ม (อ่านค่าล่าสุด + เตือน)
+
+10.3 Data Integrity
+
+ใช้ transaction ตอน submit/verify
+
+optimistic locking สำหรับ order revision
+
+11) Implementation Plan (Phases)
+Phase 1 (MVP – Chemo Ordering)
+
+Regimen Master/Builder
+
+Plan Creator (cycle/day)
+
+Order Entry + PIN submit
+
+Worklist Pharmacist + verify
+
+Basic audit log
+
+Phase 2 (Safety + Compounding + Admin)
+
+Rule engine + lab gate hard-stop
+
+Compounding log lot/expiry
+
+Administration record
+
+Charge mapping
+
+Phase 3 (Reporting + Optimization)
+
+Dashboards, turnaround time, utilization
+
+Advanced rounding/vial optimization
+
+Optional: alert/notification
+
+12) Testing Strategy
+12.1 Unit Tests
+
+dose calculation (BSA/WEIGHT/FIXED/AUC)
+
+rounding policies
+
+rule evaluation logic
+
+12.2 Integration Tests
+
+lab fetch + snapshot
+
+charge posting
+
+inventory lot recording (ถ้ามี)
+
+12.3 UAT Scenarios (Must-have)
+
+สั่ง regimen day1 แล้ว verify → prepared → administered
+
+lab ANC ต่ำ → hard-stop submit
+
+cancel หลัง verify ต้องสร้าง revision log + reason
+
+2 users แก้ order พร้อมกัน → ต้อง conflict/lock ถูกต้อง
+
+13) Acceptance Criteria (Definition of Done)
+
+สามารถสร้าง regimen, สร้าง plan, สั่งยาแบบ cycle/day ได้จริง
+
+มี PIN verify ที่จุดสำคัญ
+
+มี worklist สำหรับเภสัชกรและห้องผสมยา
+
+มี audit log ครบตาม action
+
+เชื่อม HOSxP data ได้ (HN/VN/AN, diagnosis, lab, drug master)
+
+ผ่าน UAT scenarios ทั้งหมด
+
+14) Open Questions / Configuration Needed (ให้ SA/PO เก็บ Requirement)
+
+สูตร AUC ที่ต้องรองรับ? (Carboplatin Calvert?) และ policy จาก รพ.
+
+Threshold lab gate ตาม regimen หรือ global?
+
+Dose rounding policy ต่อ site?
+
+การเชื่อม inventory/lot ของ HOSxP ปัจจุบันทำได้ระดับไหน?
+
+รูปแบบ e-sign ที่องค์กรยอมรับ (PIN vs OTP vs cert)?
