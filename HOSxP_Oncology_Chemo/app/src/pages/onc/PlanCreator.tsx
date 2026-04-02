@@ -4,6 +4,8 @@ import {
   CheckCircle2, Circle, Clock, AlertTriangle,
   Pill, User, Edit3, Printer, ArrowRight,
 } from "lucide-react";
+import { Select, SelectItem, DatePicker } from "@heroui/react";
+import { parseDate } from "@internationalized/date";
 
 /* ══════════════════════════════════════════════
    Plan Creator — Treatment Schedule Generator
@@ -172,13 +174,11 @@ export default function PlanCreator() {
           <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest mb-3 flex items-center gap-1.5">
             <Pill size={10} /> เลือก Regimen
           </p>
-          <div className="relative mb-3">
-            <select value={selectedRegimen} onChange={e => { setSelectedRegimen(e.target.value); setEntries([]); setCycleOverride(null); }}
-              className="w-full appearance-none px-3 py-2.5 text-sm border border-border rounded-xl bg-background-alt pr-8 focus:outline-none focus:border-onc">
-              <option value="">— เลือก Regimen —</option>
-              {regimens.map(r => <option key={r.id} value={r.id}>{r.code} — {r.cancer}</option>)}
-            </select>
-            <ChevronDown size={13} className="absolute right-3 top-3 text-text-muted pointer-events-none" />
+          <div className="mb-3">
+            <Select selectedKeys={selectedRegimen ? [selectedRegimen] : []} onSelectionChange={(keys) => { setSelectedRegimen(Array.from(keys)[0] as string); setEntries([]); setCycleOverride(null); }}
+              size="sm" variant="bordered" placeholder="— เลือก Regimen —">
+              {regimens.map(r => <SelectItem key={r.id}>{r.code} — {r.cancer}</SelectItem>)}
+            </Select>
           </div>
 
           {regimen && (
@@ -212,8 +212,8 @@ export default function PlanCreator() {
             <div className="space-y-3">
               <div>
                 <label className="text-[10px] text-text-muted mb-1 block">วันที่เริ่มให้ยาครั้งแรก</label>
-                <input type="date" value={startDate} onChange={e => { setStartDate(e.target.value); setEntries([]); }}
-                  className="w-full px-3 py-2 text-sm border border-border rounded-xl bg-background-alt focus:outline-none focus:border-onc" />
+                <DatePicker value={startDate ? parseDate(startDate) : null} onChange={(v) => { setStartDate(v ? v.toString() : ""); setEntries([]); }}
+                  size="sm" variant="bordered" />
               </div>
               <div>
                 <label className="text-[10px] text-text-muted mb-1 block">จำนวน Cycle</label>
@@ -324,11 +324,9 @@ export default function PlanCreator() {
                         <td className="px-3 py-3 text-center font-semibold text-text">{idx + 1}</td>
                         <td className="px-3 py-3">
                           <div className="flex items-center gap-2">
-                            <input type="date" value={entry.date}
-                              onChange={e => updateDate(entry.id, e.target.value)}
-                              className={`px-2 py-1 text-sm border rounded-lg focus:outline-none focus:border-onc ${
-                                entry.edited ? "border-warning bg-warning-bg/30 font-semibold" : "border-border bg-surface"
-                              }`} />
+                            <DatePicker value={entry.date ? parseDate(entry.date) : null}
+                              onChange={(v) => updateDate(entry.id, v ? v.toString() : "")}
+                              size="sm" variant="bordered" />
                             {entry.edited && (
                               <span className="text-[9px] font-semibold text-warning bg-warning-bg px-1.5 py-0.5 rounded">
                                 <Edit3 size={8} className="inline mr-0.5" />แก้ไข

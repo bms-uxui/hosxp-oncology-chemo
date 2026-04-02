@@ -4,6 +4,7 @@ import {
   CheckCircle2, XCircle, Edit3, Save, ArrowUpDown,
   Beaker, Shield, AlertTriangle, Clock, Syringe,
 } from "lucide-react";
+import { Select, SelectItem } from "@heroui/react";
 
 /* ══════════════════════════════════════════════
    Regimen Master & Template Builder
@@ -349,19 +350,17 @@ export default function RegimenMaster() {
                   </div>
                   <div>
                     <label className="text-[10px] text-text-muted mb-1 block">Intent</label>
-                    <select value={selected.intent}
-                      onChange={e => updateRegimen({ ...selected, intent: e.target.value as Regimen["intent"] })}
-                      className="w-full px-3 py-2 text-sm border border-border rounded-lg bg-background-alt focus:outline-none focus:border-onc">
-                      {["Curative", "Adjuvant", "Neoadjuvant", "Palliative"].map(v => <option key={v} value={v}>{v}</option>)}
-                    </select>
+                    <Select selectedKeys={selected.intent ? [selected.intent] : []} onSelectionChange={(keys) => updateRegimen({ ...selected, intent: Array.from(keys)[0] as Regimen["intent"] })}
+                      size="sm" variant="bordered">
+                      {["Curative", "Adjuvant", "Neoadjuvant", "Palliative"].map(v => <SelectItem key={v}>{v}</SelectItem>)}
+                    </Select>
                   </div>
                   <div>
                     <label className="text-[10px] text-text-muted mb-1 block">Emetogenic Level</label>
-                    <select value={selected.emetogenicLevel}
-                      onChange={e => updateRegimen({ ...selected, emetogenicLevel: e.target.value as Regimen["emetogenicLevel"] })}
-                      className="w-full px-3 py-2 text-sm border border-border rounded-lg bg-background-alt focus:outline-none focus:border-onc">
-                      {["High", "Moderate", "Low", "Minimal"].map(v => <option key={v} value={v}>{v}</option>)}
-                    </select>
+                    <Select selectedKeys={selected.emetogenicLevel ? [selected.emetogenicLevel] : []} onSelectionChange={(keys) => updateRegimen({ ...selected, emetogenicLevel: Array.from(keys)[0] as Regimen["emetogenicLevel"] })}
+                      size="sm" variant="bordered">
+                      {["High", "Moderate", "Low", "Minimal"].map(v => <SelectItem key={v}>{v}</SelectItem>)}
+                    </Select>
                   </div>
                 </div>
                 <div className="mt-3">
@@ -460,10 +459,10 @@ export default function RegimenMaster() {
                             </td>
                             <td className="px-3 py-2.5 text-center">
                               {editMode ? (
-                                <select value={drug.method} onChange={e => updateDrug(drug.id, "method", e.target.value)}
-                                  className="text-[11px] px-1.5 py-1 border border-border rounded bg-surface focus:outline-none focus:border-onc">
-                                  {(["BSA", "WEIGHT", "AUC", "FIXED"] as DoseMethod[]).map(m => <option key={m} value={m}>{m}</option>)}
-                                </select>
+                                <Select selectedKeys={drug.method ? [drug.method] : []} onSelectionChange={(keys) => updateDrug(drug.id, "method", Array.from(keys)[0] as string)}
+                                  size="sm" variant="bordered">
+                                  {(["BSA", "WEIGHT", "AUC", "FIXED"] as DoseMethod[]).map(m => <SelectItem key={m}>{m}</SelectItem>)}
+                                </Select>
                               ) : (
                                 <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${ms.bg} ${ms.text}`}>{drug.method}</span>
                               )}

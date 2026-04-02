@@ -5,6 +5,7 @@ import {
   Shield, Pill, Filter, ArrowRight, Edit3,
 } from "lucide-react";
 import { useOnc } from "../../components/onc/OncContext";
+import { Select, SelectItem } from "@heroui/react";
 
 /* ══════════════════════════════════════════════
    Pharmacist Verification Worklist
@@ -291,11 +292,10 @@ export default function PharmVerify() {
                 <p className="text-sm font-bold text-text">รายการยา ({selected.items.length})</p>
                 {selected.status === "SUBMITTED" && (
                   <div className="flex items-center gap-2">
-                    <select value={adjustReason} onChange={e => setAdjustReason(e.target.value)}
-                      className="text-[11px] px-2 py-1 border border-border rounded-lg bg-background-alt focus:outline-none focus:border-onc">
-                      <option value="">— Reason Code —</option>
-                      {reasonCodes.map(r => <option key={r} value={r}>{r}</option>)}
-                    </select>
+                    <Select selectedKeys={adjustReason ? [adjustReason] : []} onSelectionChange={(keys) => setAdjustReason(Array.from(keys)[0] as string)}
+                      size="sm" variant="bordered" placeholder="— Reason Code —">
+                      {reasonCodes.map(r => <SelectItem key={r}>{r}</SelectItem>)}
+                    </Select>
                   </div>
                 )}
               </div>

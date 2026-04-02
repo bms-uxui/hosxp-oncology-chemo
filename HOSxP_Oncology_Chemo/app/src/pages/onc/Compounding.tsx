@@ -2,15 +2,18 @@ import { useState } from "react";
 import {
   Beaker, Search, CheckCircle2, Lock, User,
   Package, AlertTriangle, ClipboardCheck, Hash,
-  Calendar, Trash2,
+  Calendar, Trash2, FlaskConical, Clock,
 } from "lucide-react";
 import { useOnc } from "../../components/onc/OncContext";
+import { DatePicker } from "@heroui/react";
+import { parseDate } from "@internationalized/date";
 
 /* ══════════════════════════════════════════════
    Compounding Worklist
    Ref: Spec §Stage 3 — lot/expiry tracking, waste
    Ref: V8.0 p.14 — inventory auto-deduct
-   Status: VERIFIED → PREPARED
+   Status: VERIFIED → PREPARED (with sub-statuses)
+   Sub-statuses: รอเตรียมยา → กำลังเตรียมยา → ยาพร้อม
    ══════════════════════════════════════════════ */
 
 type CompItem = {
@@ -19,17 +22,48 @@ type CompItem = {
   confirmed: boolean;
 };
 
+type SubStatus = "WAITING" | "IN_PROGRESS" | "READY";
+
+type StepLog = {
+  timestamp: string;
+  by: string;
+};
+
 type CompOrder = {
   id: string; hn: string; name: string; protocol: string;
   cycle: number; day: number; ward: string; verifiedAt: string;
   status: "VERIFIED" | "PREPARED"; items: CompItem[];
+  subStatus: SubStatus;
+  waitingLog?: StepLog;
+  inProgressLog?: StepLog;
+  readyLog?: StepLog;
 };
+
+const SUB_STATUS_LABEL: Record<SubStatus, string> = {
+  WAITING: "รอเตรียมยา",
+  IN_PROGRESS: "กำลังเตรียมยา",
+  READY: "ยาพร้อม",
+};
+
+const SUB_STATUS_DOT_COLOR: Record<SubStatus, string> = {
+  WAITING: "bg-yellow-400",
+  IN_PROGRESS: "bg-purple-500",
+  READY: "bg-green-500",
+};
+
+function nowTimestamp(): string {
+  const d = new Date();
+  return d.toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+}
+
+const MOCK_USER = "ภญ.สมศรี เภสัชกร";
 
 const mockOrders: CompOrder[] = [
   {
     id: "CMP-001", hn: "104558", name: "นาง คำปุ่น เสสาร",
     protocol: "CAF", cycle: 3, day: 1, ward: "OPD เคมีบำบัด", verifiedAt: "09:30",
-    status: "VERIFIED",
+    status: "VERIFIED", subStatus: "WAITING",
+    waitingLog: { timestamp: "09:30:00", by: "ระบบ (verified)" },
     items: [
       { drug: "Cyclophosphamide", dose: 700, unit: "mg", diluent: "D-5-W", diluentVol: 100, lotNo: "", expiryDate: "", preparedQty: 0, wasteQty: 0, confirmed: false },
       { drug: "Doxorubicin", dose: 70, unit: "mg", diluent: "D-5-W", diluentVol: 50, lotNo: "", expiryDate: "", preparedQty: 0, wasteQty: 0, confirmed: false },
@@ -39,7 +73,8 @@ const mockOrders: CompOrder[] = [
   {
     id: "CMP-002", hn: "5556677", name: "นายบุญมี ดีใจ",
     protocol: "FOLFOX6", cycle: 5, day: 1, ward: "หอผู้ป่วย 4A", verifiedAt: "10:15",
-    status: "VERIFIED",
+    status: "VERIFIED", subStatus: "WAITING",
+    waitingLog: { timestamp: "10:15:00", by: "ระบบ (verified)" },
     items: [
       { drug: "Oxaliplatin", dose: 144, unit: "mg", diluent: "D-5-W", diluentVol: 500, lotNo: "", expiryDate: "", preparedQty: 0, wasteQty: 0, confirmed: false },
       { drug: "Leucovorin", dose: 340, unit: "mg", diluent: "D-5-W", diluentVol: 100, lotNo: "", expiryDate: "", preparedQty: 0, wasteQty: 0, confirmed: false },
@@ -79,6 +114,16 @@ export default function Compounding() {
     }));
   }
 
+  /* Start compounding — move from WAITING to IN_PROGRESS */
+  function handleStartCompounding() {
+    if (!selected) return;
+    setOrders(prev => prev.map(o => o.id !== selected.id ? o : {
+      ...o,
+      subStatus: "IN_PROGRESS" as const,
+      inProgressLog: { timestamp: nowTimestamp(), by: MOCK_USER },
+    }));
+  }
+
   /* Double-check → PIN → PREPARED — Ref: Spec "Double-check confirmation" */
   function handlePrepare() {
     setShowConfirm(true);
@@ -93,7 +138,12 @@ export default function Compounding() {
   function handlePinComplete(p: string) {
     if (!verifyPin(p) || !selected) { setPinError(true); setPin(""); return; }
     setShowPin(false); setPin("");
-    setOrders(prev => prev.map(o => o.id === selected.id ? { ...o, status: "PREPARED" as const } : o));
+    setOrders(prev => prev.map(o => o.id === selected.id ? {
+      ...o,
+      status: "PREPARED" as const,
+      subStatus: "READY" as const,
+      readyLog: { timestamp: nowTimestamp(), by: MOCK_USER },
+    } : o));
     // Auto-advance
     const next = orders.find(o => o.status === "VERIFIED" && o.id !== selected.id);
     if (next) setSelectedId(next.id);
@@ -101,6 +151,23 @@ export default function Compounding() {
 
   if (pin.length === 6 && showPin) {
     setTimeout(() => handlePinComplete(pin), 300);
+  }
+
+  /* ─── Sub-status stepper steps ─── */
+  const STEPS: { key: SubStatus; label: string }[] = [
+    { key: "WAITING", label: "รอเตรียมยา" },
+    { key: "IN_PROGRESS", label: "กำลังเตรียมยา" },
+    { key: "READY", label: "ยาพร้อม" },
+  ];
+
+  function stepIndex(s: SubStatus): number {
+    return STEPS.findIndex(st => st.key === s);
+  }
+
+  function getStepLog(order: CompOrder, key: SubStatus): StepLog | undefined {
+    if (key === "WAITING") return order.waitingLog;
+    if (key === "IN_PROGRESS") return order.inProgressLog;
+    return order.readyLog;
   }
 
   return (
@@ -125,9 +192,12 @@ export default function Compounding() {
               }`}>
               <div className="flex items-center justify-between mb-1">
                 <span className="text-sm font-bold text-text">{o.name}</span>
-                <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
-                  o.status === "PREPARED" ? "bg-success-bg text-success" : "bg-warning-bg text-warning"
-                }`}>{o.status}</span>
+                <div className="flex items-center gap-1.5">
+                  <span className={`w-2 h-2 rounded-full ${SUB_STATUS_DOT_COLOR[o.subStatus]}`} />
+                  <span className="text-[9px] font-bold text-text-muted">
+                    {SUB_STATUS_LABEL[o.subStatus]}
+                  </span>
+                </div>
               </div>
               <p className="text-[10px] text-text-muted">
                 HN {o.hn} · {o.protocol} C{o.cycle}D{o.day} · {o.items.length} drugs
@@ -154,79 +224,147 @@ export default function Compounding() {
                 <h1 className="text-lg font-bold text-text">{selected.name} — {selected.protocol} C{selected.cycle}D{selected.day}</h1>
                 <p className="text-xs text-text-muted">HN {selected.hn} · {selected.ward} · Verified {selected.verifiedAt}</p>
               </div>
-              {selected.status === "VERIFIED" && (
+              {/* Step 1 → 2: เริ่มเตรียมยา button */}
+              {selected.subStatus === "WAITING" && (
+                <button onClick={handleStartCompounding}
+                  className="flex items-center gap-2 px-5 py-2 text-sm font-bold rounded-xl bg-purple-600 text-white hover:bg-purple-700 shadow-md shadow-purple-600/20 transition-all">
+                  <FlaskConical size={14} /> เริ่มเตรียมยา
+                </button>
+              )}
+              {/* Step 2 → 3: ยืนยันเตรียมยา button (existing) */}
+              {selected.subStatus === "IN_PROGRESS" && (
                 <button onClick={handlePrepare} disabled={!allFilled}
                   className={`flex items-center gap-2 px-5 py-2 text-sm font-bold rounded-xl transition-all ${
                     allFilled ? "bg-onc text-white hover:bg-onc/90 shadow-md shadow-onc/20" : "bg-border text-text-muted cursor-not-allowed"
                   }`}>
-                  <ClipboardCheck size={14} /> Mark as Prepared
+                  <ClipboardCheck size={14} /> ยืนยันเตรียมยา
                 </button>
               )}
-              {selected.status === "PREPARED" && (
-                <span className="text-sm font-bold px-4 py-2 bg-success-bg text-success rounded-xl">✓ PREPARED</span>
+              {selected.subStatus === "READY" && (
+                <span className="text-sm font-bold px-4 py-2 bg-success-bg text-success rounded-xl flex items-center gap-2">
+                  <CheckCircle2 size={14} /> ยาพร้อม
+                </span>
               )}
             </div>
 
-            {!allFilled && selected.status === "VERIFIED" && (
+            {/* ─── Sub-status Stepper ─── */}
+            <div className="onc-card p-4">
+              <div className="flex items-center justify-between">
+                {STEPS.map((step, i) => {
+                  const current = stepIndex(selected.subStatus);
+                  const done = i <= current;
+                  const active = i === current;
+                  const log = getStepLog(selected, step.key);
+                  return (
+                    <div key={step.key} className="flex items-center flex-1">
+                      {/* Step circle + label */}
+                      <div className="flex flex-col items-center text-center min-w-25">
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
+                          active
+                            ? `${SUB_STATUS_DOT_COLOR[step.key]} text-white ring-4 ring-opacity-20 ${
+                                step.key === "WAITING" ? "ring-yellow-400" : step.key === "IN_PROGRESS" ? "ring-purple-500" : "ring-green-500"
+                              }`
+                            : done
+                              ? "bg-green-500 text-white"
+                              : "bg-gray-200 text-gray-400"
+                        }`}>
+                          {done && !active ? <CheckCircle2 size={16} /> : i + 1}
+                        </div>
+                        <span className={`text-[11px] font-semibold mt-1.5 ${active ? "text-text" : done ? "text-green-600" : "text-text-muted"}`}>
+                          {step.label}
+                        </span>
+                        {log && (
+                          <div className="mt-1 text-[9px] text-text-muted leading-tight">
+                            <div className="flex items-center gap-0.5 justify-center"><Clock size={8} /> {log.timestamp}</div>
+                            <div className="flex items-center gap-0.5 justify-center"><User size={8} /> {log.by}</div>
+                          </div>
+                        )}
+                      </div>
+                      {/* Connector line */}
+                      {i < STEPS.length - 1 && (
+                        <div className={`flex-1 h-0.5 mx-2 rounded ${i < current ? "bg-green-400" : "bg-gray-200"}`} />
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Warning — only when in progress and not all filled */}
+            {!allFilled && selected.subStatus === "IN_PROGRESS" && (
               <div className="onc-alert-warn rounded-xl px-4 py-3 text-xs flex items-center gap-2">
-                <AlertTriangle size={14} /> กรอกข้อมูล Lot/Expiry/Qty ให้ครบทุกรายการก่อน Mark as Prepared
+                <AlertTriangle size={14} /> กรอกข้อมูล Lot/Expiry/Qty ให้ครบทุกรายการก่อนยืนยันเตรียมยา
               </div>
             )}
 
-            {/* Drug cards — Ref: Spec "lot/expiry/waste per drug" */}
-            {selected.items.map((item, idx) => (
-              <div key={idx} className="onc-card p-5">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-onc-bg flex items-center justify-center">
-                      <Package size={18} className="text-onc" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-bold text-text">{item.drug}</p>
-                      <p className="text-xs text-text-muted">{item.dose} {item.unit} · {item.diluent} {item.diluentVol > 0 ? `${item.diluentVol} ml` : ""}</p>
-                    </div>
-                  </div>
-                  {item.lotNo && item.expiryDate && item.preparedQty > 0 && (
-                    <CheckCircle2 size={20} className="text-success" />
-                  )}
-                </div>
-
-                <div className="grid grid-cols-4 gap-3">
-                  <div>
-                    <label className="text-[10px] text-text-muted mb-1 flex items-center gap-1"><Hash size={9} /> Lot No.</label>
-                    <input value={item.lotNo} onChange={e => updateItem(idx, "lotNo", e.target.value)}
-                      disabled={selected.status === "PREPARED"}
-                      placeholder="LOT..."
-                      className="w-full px-3 py-2 text-sm border border-border rounded-xl bg-background-alt focus:outline-none focus:border-onc disabled:opacity-50" />
-                  </div>
-                  <div>
-                    <label className="text-[10px] text-text-muted mb-1 flex items-center gap-1"><Calendar size={9} /> Expiry</label>
-                    <input type="date" value={item.expiryDate} onChange={e => updateItem(idx, "expiryDate", e.target.value)}
-                      disabled={selected.status === "PREPARED"}
-                      className="w-full px-3 py-2 text-sm border border-border rounded-xl bg-background-alt focus:outline-none focus:border-onc disabled:opacity-50" />
-                  </div>
-                  <div>
-                    <label className="text-[10px] text-text-muted mb-1">Prepared Qty ({item.unit})</label>
-                    <input type="number" value={item.preparedQty || ""} onChange={e => updateItem(idx, "preparedQty", Number(e.target.value))}
-                      disabled={selected.status === "PREPARED"}
-                      className="w-full px-3 py-2 text-sm border border-border rounded-xl bg-background-alt focus:outline-none focus:border-onc disabled:opacity-50" />
-                  </div>
-                  <div>
-                    <label className="text-[10px] text-text-muted mb-1 flex items-center gap-1"><Trash2 size={9} /> Waste ({item.unit})</label>
-                    <input type="number" value={item.wasteQty || ""} onChange={e => updateItem(idx, "wasteQty", Number(e.target.value))}
-                      disabled={selected.status === "PREPARED"}
-                      className="w-full px-3 py-2 text-sm border border-border rounded-xl bg-background-alt focus:outline-none focus:border-onc disabled:opacity-50" />
-                  </div>
-                </div>
-
-                {idx === 0 && selected.items.length > 1 && selected.status === "VERIFIED" && (
-                  <button onClick={applyLotToAll}
-                    className="mt-3 text-[11px] font-semibold text-onc hover:underline">
-                    Apply Lot/Expiry to all drugs ↓
-                  </button>
-                )}
+            {/* Waiting state message */}
+            {selected.subStatus === "WAITING" && (
+              <div className="onc-card p-6 text-center">
+                <FlaskConical size={32} className="text-yellow-500 mx-auto mb-3" />
+                <p className="text-sm font-semibold text-text mb-1">รอเตรียมยา</p>
+                <p className="text-xs text-text-muted">กด "เริ่มเตรียมยา" เพื่อเริ่มกระบวนการเตรียมยา</p>
               </div>
-            ))}
+            )}
+
+            {/* Drug cards — only show when IN_PROGRESS or READY */}
+            {(selected.subStatus === "IN_PROGRESS" || selected.subStatus === "READY") && (
+              <>
+                {/* Ref: Spec "lot/expiry/waste per drug" */}
+                {selected.items.map((item, idx) => (
+                  <div key={idx} className="onc-card p-5">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-onc-bg flex items-center justify-center">
+                          <Package size={18} className="text-onc" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-bold text-text">{item.drug}</p>
+                          <p className="text-xs text-text-muted">{item.dose} {item.unit} · {item.diluent} {item.diluentVol > 0 ? `${item.diluentVol} ml` : ""}</p>
+                        </div>
+                      </div>
+                      {item.lotNo && item.expiryDate && item.preparedQty > 0 && (
+                        <CheckCircle2 size={20} className="text-success" />
+                      )}
+                    </div>
+
+                    <div className="grid grid-cols-4 gap-3">
+                      <div>
+                        <label className="text-[10px] text-text-muted mb-1 flex items-center gap-1"><Hash size={9} /> Lot No.</label>
+                        <input value={item.lotNo} onChange={e => updateItem(idx, "lotNo", e.target.value)}
+                          disabled={selected.subStatus === "READY"}
+                          placeholder="LOT..."
+                          className="w-full px-3 py-2 text-sm border border-border rounded-xl bg-background-alt focus:outline-none focus:border-onc disabled:opacity-50" />
+                      </div>
+                      <div>
+                        <label className="text-[10px] text-text-muted mb-1 flex items-center gap-1"><Calendar size={9} /> Expiry</label>
+                        <DatePicker value={item.expiryDate ? parseDate(item.expiryDate) : null} onChange={(v) => updateItem(idx, "expiryDate", v ? v.toString() : "")}
+                          isDisabled={selected.subStatus === "READY"}
+                          size="sm" variant="bordered" />
+                      </div>
+                      <div>
+                        <label className="text-[10px] text-text-muted mb-1">Prepared Qty ({item.unit})</label>
+                        <input type="number" value={item.preparedQty || ""} onChange={e => updateItem(idx, "preparedQty", Number(e.target.value))}
+                          disabled={selected.subStatus === "READY"}
+                          className="w-full px-3 py-2 text-sm border border-border rounded-xl bg-background-alt focus:outline-none focus:border-onc disabled:opacity-50" />
+                      </div>
+                      <div>
+                        <label className="text-[10px] text-text-muted mb-1 flex items-center gap-1"><Trash2 size={9} /> Waste ({item.unit})</label>
+                        <input type="number" value={item.wasteQty || ""} onChange={e => updateItem(idx, "wasteQty", Number(e.target.value))}
+                          disabled={selected.subStatus === "READY"}
+                          className="w-full px-3 py-2 text-sm border border-border rounded-xl bg-background-alt focus:outline-none focus:border-onc disabled:opacity-50" />
+                      </div>
+                    </div>
+
+                    {idx === 0 && selected.items.length > 1 && selected.subStatus === "IN_PROGRESS" && (
+                      <button onClick={applyLotToAll}
+                        className="mt-3 text-[11px] font-semibold text-onc hover:underline">
+                        Apply Lot/Expiry to all drugs ↓
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </>
+            )}
           </div>
         )}
       </div>
@@ -234,7 +372,7 @@ export default function Compounding() {
       {/* ═══ Double-check Confirmation — Ref: Spec "mandatory secondary check" ═══ */}
       {showConfirm && selected && (
         <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50">
-          <div className="onc-card-raised p-6 w-[480px]">
+          <div className="onc-card-raised p-6 w-120">
             <h3 className="text-base font-bold text-text mb-4 flex items-center gap-2">
               <ClipboardCheck size={16} className="text-onc" /> ยืนยันการเตรียมยา (Double-check)
             </h3>

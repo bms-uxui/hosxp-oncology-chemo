@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import {
   Stethoscope, Play, Square, CheckCircle2, Lock,
   Clock, AlertTriangle, User, Search, Syringe,
-  Timer, FileText,
+  Timer, FileText, Heart, Thermometer, Activity, Wind,
 } from "lucide-react";
 import { useOnc } from "../../components/onc/OncContext";
 
@@ -72,6 +72,27 @@ export default function Administration() {
 
   const selected = orders.find(o => o.id === selectedId);
   const allCompleted = selected?.drugs.every(d => d.status === "completed") ?? false;
+
+  /* ── Vital Signs (eMAR) state ── */
+  type VitalSigns = { bp: string; hr: string; temp: string; spo2: string };
+  const [vitalsByOrder, setVitalsByOrder] = useState<Record<string, VitalSigns>>({});
+  const [vitalsSaved, setVitalsSaved] = useState<Record<string, boolean>>({});
+
+  const currentVitals = selected ? (vitalsByOrder[selected.id] ?? { bp: "", hr: "", temp: "", spo2: "" }) : { bp: "", hr: "", temp: "", spo2: "" };
+  const currentVitalsSaved = selected ? (vitalsSaved[selected.id] ?? false) : false;
+
+  function updateVital(field: keyof VitalSigns, value: string) {
+    if (!selected) return;
+    setVitalsByOrder(prev => ({
+      ...prev,
+      [selected.id]: { ...(prev[selected.id] ?? { bp: "", hr: "", temp: "", spo2: "" }), [field]: value },
+    }));
+  }
+
+  function saveVitals() {
+    if (!selected) return;
+    setVitalsSaved(prev => ({ ...prev, [selected.id]: true }));
+  }
 
   /* Timer tick — updates every 10s for infusion countdown */
   useEffect(() => {
@@ -197,6 +218,126 @@ export default function Administration() {
               )}
               {selected.status === "ADMINISTERED" && (
                 <span className="text-sm font-bold px-4 py-2.5 bg-success-bg text-success rounded-2xl">✓ ADMINISTERED</span>
+              )}
+            </div>
+
+            {/* ═══ Vital Signs ก่อนให้ยา (eMAR) ═══ */}
+            <div className="onc-card p-5">
+              <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest mb-3 flex items-center gap-1.5">
+                <Activity size={10} className="text-onc" /> Vital Signs ก่อนให้ยา
+              </p>
+
+              {/* Green summary when all drugs done and vitals were saved */}
+              {allCompleted && currentVitalsSaved && (
+                <div className="bg-success-bg border border-success/20 rounded-xl p-4 mb-3">
+                  <p className="text-xs font-bold text-success mb-2">✓ Vital Signs บันทึกแล้ว</p>
+                  <div className="grid grid-cols-2 gap-2 text-xs text-text">
+                    <span className="flex items-center gap-1.5"><Activity size={12} className="text-success" /> BP: {currentVitals.bp || "—"} mmHg</span>
+                    <span className="flex items-center gap-1.5"><Heart size={12} className="text-success" /> HR: {currentVitals.hr || "—"} bpm</span>
+                    <span className="flex items-center gap-1.5"><Thermometer size={12} className="text-success" /> Temp: {currentVitals.temp || "—"} °C</span>
+                    <span className="flex items-center gap-1.5"><Wind size={12} className="text-success" /> SpO₂: {currentVitals.spo2 || "—"} %</span>
+                  </div>
+                </div>
+              )}
+
+              {/* Input fields */}
+              {selected.status !== "ADMINISTERED" && (
+                <>
+                  <div className="grid grid-cols-2 gap-3 mb-3">
+                    {/* BP */}
+                    <div>
+                      <label className="text-[10px] font-semibold text-text-muted flex items-center gap-1 mb-1">
+                        <Activity size={10} className="text-onc" /> ความดันโลหิต (BP)
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="120/80"
+                        value={currentVitals.bp}
+                        onChange={e => updateVital("bp", e.target.value)}
+                        disabled={currentVitalsSaved}
+                        className="w-full px-3 py-2.5 text-sm border border-border rounded-xl bg-background-alt focus:outline-none focus:border-onc disabled:opacity-50"
+                      />
+                      <span className="text-[9px] text-text-muted">mmHg</span>
+                    </div>
+                    {/* HR */}
+                    <div>
+                      <label className="text-[10px] font-semibold text-text-muted flex items-center gap-1 mb-1">
+                        <Heart size={10} className="text-danger" /> อัตราการเต้นหัวใจ (HR)
+                      </label>
+                      <input
+                        type="number"
+                        placeholder="80"
+                        value={currentVitals.hr}
+                        onChange={e => updateVital("hr", e.target.value)}
+                        disabled={currentVitalsSaved}
+                        className="w-full px-3 py-2.5 text-sm border border-border rounded-xl bg-background-alt focus:outline-none focus:border-onc disabled:opacity-50"
+                      />
+                      <span className="text-[9px] text-text-muted">bpm</span>
+                    </div>
+                    {/* Temp */}
+                    <div>
+                      <label className="text-[10px] font-semibold text-text-muted flex items-center gap-1 mb-1">
+                        <Thermometer size={10} className="text-warning" /> อุณหภูมิ (Temp)
+                      </label>
+                      <input
+                        type="number"
+                        step="0.1"
+                        placeholder="36.5"
+                        value={currentVitals.temp}
+                        onChange={e => updateVital("temp", e.target.value)}
+                        disabled={currentVitalsSaved}
+                        className="w-full px-3 py-2.5 text-sm border border-border rounded-xl bg-background-alt focus:outline-none focus:border-onc disabled:opacity-50"
+                      />
+                      <span className="text-[9px] text-text-muted">°C</span>
+                    </div>
+                    {/* SpO₂ */}
+                    <div>
+                      <label className="text-[10px] font-semibold text-text-muted flex items-center gap-1 mb-1">
+                        <Wind size={10} className="text-info" /> ออกซิเจนในเลือด (SpO₂)
+                      </label>
+                      <input
+                        type="number"
+                        placeholder="98"
+                        value={currentVitals.spo2}
+                        onChange={e => updateVital("spo2", e.target.value)}
+                        disabled={currentVitalsSaved}
+                        className="w-full px-3 py-2.5 text-sm border border-border rounded-xl bg-background-alt focus:outline-none focus:border-onc disabled:opacity-50"
+                      />
+                      <span className="text-[9px] text-text-muted">%</span>
+                    </div>
+                  </div>
+
+                  {/* Save button */}
+                  {!currentVitalsSaved ? (
+                    <button
+                      onClick={saveVitals}
+                      disabled={!currentVitals.bp && !currentVitals.hr && !currentVitals.temp && !currentVitals.spo2}
+                      className="onc-touch w-full py-3 bg-onc text-white text-sm font-bold rounded-2xl hover:bg-onc/90 shadow-md disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2">
+                      <CheckCircle2 size={16} /> บันทึก Vital Signs
+                    </button>
+                  ) : (
+                    <div className="flex items-center gap-2 text-xs font-semibold text-success">
+                      <CheckCircle2 size={14} /> บันทึก Vital Signs แล้ว
+                    </div>
+                  )}
+                </>
+              )}
+
+              {/* Summary for ADMINISTERED orders */}
+              {selected.status === "ADMINISTERED" && currentVitalsSaved && (
+                <div className="bg-success-bg border border-success/20 rounded-xl p-4">
+                  <p className="text-xs font-bold text-success mb-2">✓ Vital Signs บันทึกแล้ว</p>
+                  <div className="grid grid-cols-2 gap-2 text-xs text-text">
+                    <span className="flex items-center gap-1.5"><Activity size={12} className="text-success" /> BP: {currentVitals.bp || "—"} mmHg</span>
+                    <span className="flex items-center gap-1.5"><Heart size={12} className="text-success" /> HR: {currentVitals.hr || "—"} bpm</span>
+                    <span className="flex items-center gap-1.5"><Thermometer size={12} className="text-success" /> Temp: {currentVitals.temp || "—"} °C</span>
+                    <span className="flex items-center gap-1.5"><Wind size={12} className="text-success" /> SpO₂: {currentVitals.spo2 || "—"} %</span>
+                  </div>
+                </div>
+              )}
+
+              {selected.status === "ADMINISTERED" && !currentVitalsSaved && (
+                <p className="text-xs text-text-muted">ไม่ได้บันทึก Vital Signs</p>
               )}
             </div>
 

@@ -1,19 +1,15 @@
 import { useState } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router";
 import {
-  LayoutDashboard, Users, FlaskConical, Pill,
+  LayoutDashboard, Users, FlaskConical, Pill, Home,
   BarChart3, Settings, Beaker, Heart,
-  Bell, Activity, Search, ChevronDown,
-  Stethoscope, CalendarCheck, Clock,
-  ChevronRight, Receipt,
+  Bell, Search, ChevronDown,
+  Stethoscope, CalendarCheck, Clock, Receipt, Syringe, ClipboardCheck,
 } from "lucide-react";
 import { useOnc, roleLabels, roleInitials, roleEnglish, roleColor, type OncRole } from "./OncContext";
 
 /* ══════════════════════════════════════════════
-   OncLayout — Growly-style dark sidebar + frosted topbar
-   Grid: 8pt system
-   Sidebar: Dark navy, icon-first, expand on hover
-   Background: Blue-gray gradient
+   OncLayout — Sidebar with margin + floating content
    ══════════════════════════════════════════════ */
 
 type NavItem = {
@@ -22,22 +18,18 @@ type NavItem = {
   to: string;
   end?: boolean;
   roles?: OncRole[];
-  badge?: number;
 };
 
 const navItems: NavItem[] = [
-  { label: "ภาพรวม", icon: LayoutDashboard, to: "/onc", end: true },
-  { label: "ผู้ป่วย", icon: Users, to: "/onc/patients" },
-  { label: "สั่งยา (CPOE)", icon: FlaskConical, to: "/onc/order-entry", roles: ["ONC_DOCTOR"] },
-  { label: "Pharm Verify", icon: Heart, to: "/onc/pharm-verify", roles: ["ONC_PHARMACIST"] },
-  { label: "เตรียมยา", icon: Beaker, to: "/onc/compounding", roles: ["ONC_PHARMACIST", "COMPOUND_TECH"] },
-  { label: "ให้ยา", icon: Stethoscope, to: "/onc/administration", roles: ["CHEMO_NURSE", "ONC_DOCTOR"] },
-  { label: "Regimen Master", icon: Pill, to: "/onc/regimen", roles: ["ONC_DOCTOR", "ONC_PHARMACIST"] },
-  { label: "Plan Creator", icon: CalendarCheck, to: "/onc/plan", roles: ["ONC_DOCTOR"] },
-  { label: "Timeline", icon: Clock, to: "/onc/timeline" },
+  { label: "หน้าหลัก", icon: Home, to: "/onc", end: true },
+  { label: "เภสัชกรตรวจสอบ", icon: Heart, to: "/onc/pharm-verify", roles: ["ONC_PHARMACIST"] },
+  { label: "เตรียมผสมยา", icon: Beaker, to: "/onc/compounding", roles: ["ONC_PHARMACIST", "COMPOUND_TECH"] },
+  { label: "บันทึกการให้ยา", icon: Stethoscope, to: "/onc/administration", roles: ["CHEMO_NURSE", "ONC_DOCTOR"] },
+  { label: "สูตรยาเคมีบำบัด", icon: FlaskConical, to: "/onc/regimen", roles: ["ONC_DOCTOR", "ONC_PHARMACIST"] },
+  { label: "วางแผนการรักษา", icon: CalendarCheck, to: "/onc/plan", roles: ["ONC_DOCTOR"] },
+  { label: "ประวัติ/Audit", icon: Clock, to: "/onc/timeline" },
   { label: "รายงาน", icon: BarChart3, to: "/onc/reports", roles: ["ONC_DOCTOR", "ONC_PHARMACIST", "BILLING_OFFICER"] },
-  { label: "Billing", icon: Receipt, to: "/onc/billing", roles: ["BILLING_OFFICER"] },
-  { label: "ตั้งค่า", icon: Settings, to: "/onc/settings", roles: ["ADMIN"] },
+  { label: "ตั้งค่าระบบ", icon: Settings, to: "/onc/settings", roles: ["ADMIN"] },
 ];
 
 export default function OncLayout() {
@@ -48,165 +40,96 @@ export default function OncLayout() {
   const visibleNav = navItems.filter(item => !item.roles || item.roles.includes(role));
 
   return (
-    <div className="flex h-screen overflow-hidden"
-      style={{ background: "linear-gradient(135deg, #DAE5F0 0%, #E8EDF3 40%, #D5E3F0 100%)" }}>
+    <div className="flex h-screen overflow-hidden gap-4 p-4">
 
-      {/* ══════════ Sidebar — always expanded ══════════ */}
-      <aside
-        className="w-56 flex flex-col shrink-0 relative z-20"
-        style={{ background: "linear-gradient(180deg, #1A2A3A 0%, #0F1C2B 100%)" }}>
+      {/* ══════════ Sidebar — Purple theme ══════════ */}
+      <aside className="hidden lg:flex w-56 xl:w-60 shrink-0 rounded-3xl flex-col overflow-hidden"
+        style={{ background: "#674BB3" }}>
 
         {/* Logo */}
-        <div className="flex items-center pt-6 pb-5 px-4">
-          <div className={`flex items-center gap-3 ${!true && "justify-center w-full"}`}>
-            <div className="w-10 h-10 rounded-2xl flex items-center justify-center shrink-0"
-              style={{ background: "linear-gradient(135deg, #7C6EBF, #9B8FD8)", boxShadow: "0 4px 12px rgba(124,110,191,0.4)" }}>
-              <Activity size={20} className="text-white" />
-            </div>
-            <div>
-              <p className="text-white text-sm font-bold leading-tight">HOSxP</p>
-              <p className="text-white/40 text-[10px] font-medium">Oncology Chemo</p>
-            </div>
+        <div className="flex items-center gap-3 px-5 pt-6 pb-4">
+          <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center shrink-0">
+            <Pill size={18} className="text-[#674BB3]" />
+          </div>
+          <div>
+            <p className="text-[10px] font-medium text-white/60 leading-tight">BMS</p>
+            <p className="text-sm font-bold text-white leading-tight">Oncology Chemo</p>
           </div>
         </div>
 
         {/* Nav */}
-        <nav className="flex-1 px-2 space-y-1 overflow-y-auto overflow-x-hidden py-2">
+        <nav className="flex-1 px-3 py-2 space-y-0.5 overflow-y-auto">
           {visibleNav.map((item) => (
             <NavLink key={item.to} to={item.to} end={item.end}
-              title={item.label}
               className={({ isActive }) =>
-                `flex items-center gap-3 px-3 py-2 rounded-xl transition-all group relative ${
+                `flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-bold transition-all ${
                   isActive
-                    ? "bg-white/12 text-white"
-                    : "text-white/35 hover:text-white/80 hover:bg-white/6"
+                    ? "bg-[#FF8654] text-white shadow-sm"
+                    : "text-white/80 hover:bg-white/10"
                 }`
               }>
-              {({ isActive }) => (
-                <>
-                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-all ${
-                    isActive
-                      ? "bg-onc shadow-md"
-                      : "bg-white/5 group-hover:bg-white/10"
-                  }`}
-                    style={isActive ? { background: "#7C6EBF", boxShadow: "0 4px 12px rgba(124,110,191,0.3)" } : {}}>
-                    <item.icon size={17} strokeWidth={isActive ? 2 : 1.5} />
-                  </div>
-                  <span className={`text-[13px] whitespace-nowrap ${isActive ? "font-semibold" : "font-medium"}`}>
-                    {item.label}
-                  </span>
-                  {item.badge && (
-                    <span className="absolute top-1 left-9 w-4 h-4 text-[9px] font-bold bg-danger text-white rounded-full flex items-center justify-center">
-                      {item.badge}
-                    </span>
-                  )}
-                </>
-              )}
+              <item.icon size={18} strokeWidth={1.8} />
+              <span>{item.label}</span>
             </NavLink>
           ))}
         </nav>
 
-        {/* Bottom actions */}
-        <div className="px-2 pb-2 space-y-1">
-          <button onClick={() => setSearchOpen(true)}
-            className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-white/25 hover:text-white/70 hover:bg-white/6 transition-all">
-            <div className="w-9 h-9 rounded-xl bg-white/5 flex items-center justify-center shrink-0">
-              <Search size={16} />
-            </div>
-            <span className="text-[13px] font-medium whitespace-nowrap">ค้นหา</span>
-          </button>
-        </div>
+        {/* User / Role */}
+        <div className="px-3 pb-4 pt-2">
+          <div className="relative">
+            <button onClick={() => setRoleOpen(!roleOpen)}
+              className="w-full flex items-center gap-3 px-3 py-3 rounded-2xl hover:bg-white/10 transition-all text-left"
+              style={{ background: "#563AA4" }}>
+              <div className="w-9 h-9 rounded-full flex items-center justify-center text-[10px] font-bold text-white shrink-0"
+                style={{ background: roleColor[role] }}>
+                {roleInitials[role]}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-bold text-white truncate leading-tight">
+                  {roleLabels[role].split(" (")[0]}
+                </p>
+                <p className="text-[10px] text-white/50 leading-tight">{roleEnglish[role]}</p>
+              </div>
+              <ChevronDown size={14} className="text-white/50 shrink-0" />
+            </button>
 
-        {/* User */}
-        <div className="px-3 py-4 border-t border-white/8">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl flex items-center justify-center text-white text-xs font-bold shrink-0"
-              style={{ background: roleColor[role], boxShadow: `0 4px 12px ${roleColor[role]}40` }}>
-              {roleInitials[role]}
-            </div>
-            <div className="flex-1 min-w-0 overflow-hidden">
-              <p className="text-white text-[13px] font-semibold truncate leading-tight">{roleLabels[role].split(" (")[0]}</p>
-              <p className="text-white/35 text-[11px]">{roleEnglish[role]}</p>
-            </div>
+            {roleOpen && (
+              <div className="absolute left-0 bottom-full mb-2 bg-white rounded-2xl shadow-xl z-50 py-2 w-full">
+                <p className="px-4 py-1.5 text-[9px] text-[#898989] uppercase tracking-widest font-bold">เปลี่ยน Role</p>
+                {(Object.keys(roleLabels) as OncRole[]).map((r) => (
+                  <button key={r}
+                    onClick={() => { setRole(r); setRoleOpen(false); }}
+                    className={`w-full flex items-center gap-3 px-4 py-2 hover:bg-gray-50 transition-all text-left ${
+                      role === r ? "bg-[#674BB3]/5" : ""
+                    }`}>
+                    <div className="w-7 h-7 rounded-full flex items-center justify-center text-[9px] font-bold text-white shrink-0"
+                      style={{ background: role === r ? roleColor[r] : "#94A3B8" }}>
+                      {roleInitials[r]}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-xs text-[#404040] leading-tight truncate">{roleLabels[r]}</p>
+                      <p className="text-[10px] text-[#898989]">{roleEnglish[r]}</p>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </aside>
 
       {/* ══════════ Main ══════════ */}
-      <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Topbar — frosted glass */}
-        <header className="shrink-0 px-8 py-3 flex items-center justify-between onc-glass">
-          <div className="flex items-center gap-2 text-sm text-text-muted">
-            <span className="font-semibold text-text">HOSxP Oncology</span>
-            <ChevronRight size={12} />
-            <span>Chemo CPOE</span>
-          </div>
-
-          <div className="flex items-center gap-3">
-            {/* Search */}
-            <button onClick={() => setSearchOpen(true)}
-              className="flex items-center gap-2 px-4 py-2 text-xs text-text-muted bg-white/50 hover:bg-white/80 rounded-xl transition-all border border-white/60">
-              <Search size={13} />
-              <span>ค้นหาผู้ป่วย...</span>
-              <kbd className="ml-6 text-[10px] bg-background px-1.5 py-0.5 rounded font-mono text-text-muted">⌘K</kbd>
-            </button>
-
-            <div className="w-px h-6 bg-border" />
-
-            {/* Date */}
-            <p className="text-xs text-text-muted font-medium">
-              {new Date().toLocaleDateString("th-TH", { day: "numeric", month: "short", year: "numeric" })}
-            </p>
-
-            {/* Role switcher */}
-            <div className="relative">
-              <button onClick={() => setRoleOpen(!roleOpen)}
-                className="flex items-center gap-2 px-3 py-1.5 hover:bg-white/50 rounded-xl transition-all">
-                <div className="w-7 h-7 rounded-lg flex items-center justify-center text-[10px] font-bold text-white"
-                  style={{ background: roleColor[role] }}>
-                  {roleInitials[role]}
-                </div>
-                <span className="text-xs font-medium text-text-secondary">{roleEnglish[role]}</span>
-                <ChevronDown size={12} className="text-text-muted" />
-              </button>
-              {roleOpen && (
-                <div className="absolute right-0 top-full mt-2 onc-card-raised z-40 py-2 w-64">
-                  <p className="px-4 py-2 text-[10px] text-text-muted uppercase tracking-widest font-bold">เปลี่ยน Role (Prototype)</p>
-                  {(Object.keys(roleLabels) as OncRole[]).map((r) => (
-                    <button key={r}
-                      onClick={() => { setRole(r); setRoleOpen(false); }}
-                      className={`w-full flex items-center gap-3 px-4 py-2.5 hover:bg-background-alt transition-all text-left ${
-                        role === r ? "font-semibold" : ""
-                      }`}>
-                      <div className="w-8 h-8 rounded-lg flex items-center justify-center text-[10px] font-bold text-white shrink-0"
-                        style={{ background: role === r ? roleColor[r] : "#94A3B8" }}>
-                        {roleInitials[r]}
-                      </div>
-                      <div>
-                        <p className="text-[13px] text-text leading-tight">{roleLabels[r]}</p>
-                        <p className="text-[11px] text-text-muted">{roleEnglish[r]}</p>
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Notifications */}
-            <button className="relative w-9 h-9 flex items-center justify-center hover:bg-white/50 rounded-xl text-text-muted hover:text-text transition-all">
-              <Bell size={16} />
-              <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-danger rounded-full border-2 border-white" />
-            </button>
-          </div>
-        </header>
-
+      <div className="flex-1 flex flex-col overflow-hidden min-w-0">
         {/* Content */}
         <main className="flex-1 overflow-y-auto">
           <Outlet />
         </main>
       </div>
 
-      {roleOpen && <div className="fixed inset-0 z-30" onClick={() => setRoleOpen(false)} />}
+      {/* Backdrop */}
+      {roleOpen && (
+        <div className="fixed inset-0 z-40" onClick={() => setRoleOpen(false)} />
+      )}
     </div>
   );
 }
