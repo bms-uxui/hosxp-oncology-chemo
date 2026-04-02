@@ -802,7 +802,7 @@ export default function OrderEntry({ embedded = false, patientHN, onStepChange, 
               <p className="text-xs font-semibold text-[#674BB3]/70 uppercase tracking-wide">สูตรเคมีบำบัด</p>
               <p className="text-4xl font-black text-[#404040] mt-3">{protocol.code}</p>
               <p className="text-sm text-[#404040]/70 font-medium mt-1">Cycle {cycle} / {protocol.totalCycles} · q{protocol.cycleDays}d</p>
-              <div className="grid">
+              <div className="">
 
                 <div className="flex flex-wrap gap-2 ">
                   <span className="text-xs font-bold text-[#674BB3] bg-white/70 px-3 py-1 rounded-full">{protocol.cancer}</span>
