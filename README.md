@@ -2,6 +2,12 @@
 
 > ระบบ Computerized Physician Order Entry สำหรับการสั่งยาเคมีบำบัด — Prototype / Frontend MVP
 
+**Live Demo**: [https://bms-uxui.github.io/hosxp-oncology-chemo/](https://bms-uxui.github.io/hosxp-oncology-chemo/)
+
+**Tutorial**: [https://bms-uxui.github.io/hosxp-oncology-chemo/docs/tutorial.html](https://bms-uxui.github.io/hosxp-oncology-chemo/docs/tutorial.html)
+
+**Repository**: [https://github.com/bms-uxui/hosxp-oncology-chemo](https://github.com/bms-uxui/hosxp-oncology-chemo)
+
 ## ภาพรวม
 
 ระบบจัดการยาเคมีบำบัดแบบครบวงจร ครอบคลุมกระบวนการทำงานตั้งแต่การลงทะเบียนผู้ป่วยจนถึงการออกใบแจ้งหนี้ รองรับการทำงานของทีมสหสาขาวิชาชีพ 5 บทบาท
@@ -127,9 +133,11 @@ app/src/
 
 ## เอกสาร
 
-- **Tutorial (HTML)**: `docs/tutorial.html` — เปิดในเบราว์เซอร์ พร้อม sidebar navigation + wireframes + flow diagrams
-- **PM Guide**: `docs/pm-guide.md` — คู่มือทดสอบ step-by-step ทุก flow
-- **Tutorial (MD)**: `docs/tutorial.md` — เอกสาร Markdown สำหรับ developer
+| เอกสาร | ลิงก์ | คำอธิบาย |
+|--------|------|---------|
+| Tutorial (HTML) | [เปิดออนไลน์](https://bms-uxui.github.io/hosxp-oncology-chemo/docs/tutorial.html) | Interactive tutorial พร้อม sidebar, wireframes, flow diagrams |
+| PM Guide | [`docs/pm-guide.md`](docs/pm-guide.md) | คู่มือทดสอบ step-by-step ทุก flow |
+| Tutorial (MD) | [`docs/tutorial.md`](docs/tutorial.md) | เอกสาร Markdown สำหรับ developer |
 
 ## ข้อจำกัด
 
