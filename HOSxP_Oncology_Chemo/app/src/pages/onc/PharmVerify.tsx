@@ -43,6 +43,8 @@ const PHARM_STEPS = ["เตรียมยา", "ยาพร้อม"];
    ══════════════════════════════════════════════ */
 
 type OrderStatus = "SUBMITTED" | "VERIFIED" | "PREPARING" | "PREPARED" | "REJECTED";
+function isRejected(s: string | undefined): boolean { return s === "REJECTED"; }
+function isNotRejected(s: string | undefined): boolean { return s !== "REJECTED"; }
 type OrderItem = {
   name: string; dose: string; route: string; method: string;
   calcDose: number; finalDose: number; diluent: string; rate: string;
@@ -275,7 +277,7 @@ export default function PharmVerify({ embedded, patientHN, patientData }: { embe
 
   if (pin.length === 6 && showPin) { setTimeout(() => handlePinComplete(pin), 300); }
 
-  const pharmStepIndex = (() => { const s = selectedStatus; if (s === "SUBMITTED" || s === "PREPARING") return 0; if (s === "PREPARED") return 1; if (s === "REJECTED") return -1; return 0; })();
+  const pharmStepIndex = (() => { const s = selectedStatus as string | undefined; if (s === "SUBMITTED" || s === "PREPARING") return 0; if (s === "PREPARED") return 1; if (s === "REJECTED") return -1; return 0; })();
 
   const pinLabel = pinAction === "compound" ? "ลงนามเตรียมยา" : "ยืนยันปฏิเสธ";
   const pinDropdown = (
@@ -313,10 +315,10 @@ export default function PharmVerify({ embedded, patientHN, patientData }: { embe
     return (
       <>
         {/* Stepper — sticky */}
-        {selectedStatus !== "REJECTED" && !preparingShimmer && (
+        {isNotRejected(selectedStatus) && !preparingShimmer && (
         <div className="rounded-2xl border-[0.1px] border-border-card p-5 mb-4 sticky top-0 z-10 backdrop-blur-md bg-white/70" style={{ boxShadow: "0 1px 4px rgba(0,0,0,0.04)" }}>
           <div>
-            {selectedStatus !== "REJECTED" ? (
+            {isNotRejected(selectedStatus) ? (
               <MuiStepper activeStep={pharmStepIndex} alternativeLabel connector={<PharmConnector />}
                 sx={{ "& .MuiStep-root": { p: 0 } }}>
                 {PHARM_STEPS.map((label, i) => (
@@ -343,7 +345,7 @@ export default function PharmVerify({ embedded, patientHN, patientData }: { embe
         )}
 
         {/* Step title + actions */}
-        {selectedStatus !== "REJECTED" && !preparingShimmer && (
+        {isNotRejected(selectedStatus) && !preparingShimmer && (
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-sm font-bold text-text">
@@ -407,7 +409,7 @@ export default function PharmVerify({ embedded, patientHN, patientData }: { embe
         )}
 
         {/* 2-col: Document (left) + Info sidebar (right) */}
-        {(selectedStatus === "SUBMITTED" || selectedStatus === "PREPARING" || selectedStatus === "REJECTED") && !preparingShimmer && (() => {
+        {(selectedStatus === "SUBMITTED" || selectedStatus === "PREPARING" || isRejected(selectedStatus)) && !preparingShimmer && (() => {
           const p = patientData;
           return (
           <div className="flex gap-4 min-h-0 flex-1">
@@ -581,7 +583,7 @@ export default function PharmVerify({ embedded, patientHN, patientData }: { embe
               {selectedStatus === "SUBMITTED" && !showCompForm && (
                 <SafetyGatePanel verification={verification} onOverride={handleGateOverride} />
               )}
-              {selectedStatus === "REJECTED" && (
+              {isRejected(selectedStatus) && (
                 <div className={`${card} flex items-center gap-3`}>
                   <XCircle size={18} className="text-red-500 shrink-0" />
                   <div>
