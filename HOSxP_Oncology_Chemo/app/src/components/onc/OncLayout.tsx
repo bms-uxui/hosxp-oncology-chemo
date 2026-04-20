@@ -46,8 +46,8 @@ export default function OncLayout() {
 
         {/* Logo at top */}
         <div className="flex items-center gap-3 px-5 pt-6 pb-4">
-          <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center shrink-0">
-            <Pill size={18} className="text-[#674BB3]" />
+          <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center shrink-0 overflow-hidden">
+            <img src={`${import.meta.env.BASE_URL}onc/logo.png`} alt="Logo" className="w-8 h-8 object-contain" />
           </div>
           <div>
             <p className="text-[10px] font-medium text-white/60 leading-tight">HOSxP</p>
