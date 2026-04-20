@@ -1,0 +1,1068 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HOSxP Oncology Chemo CPOE — Tutorial</title>
+<style>
+  :root { --purple: #674BB3; --purple-light: #EDE9F6; --text: #404040; --muted: #898989; --bg: #f8f9fb; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Google Sans', 'Noto Sans Thai', -apple-system, sans-serif; background: var(--bg); color: var(--text); line-height: 1.7; }
+
+  /* Nav */
+  .sidebar { position: fixed; left: 0; top: 0; bottom: 0; width: 260px; background: var(--purple); padding: 24px 16px; overflow-y: auto; z-index: 10; }
+  .sidebar h1 { color: white; font-size: 14px; font-weight: 700; margin-bottom: 4px; }
+  .sidebar .sub { color: rgba(255,255,255,0.6); font-size: 11px; margin-bottom: 24px; }
+  .sidebar a { display: block; color: rgba(255,255,255,0.6); text-decoration: none; font-size: 13px; padding: 7px 12px; border-radius: 10px; margin-bottom: 1px; transition: all 0.2s; position: relative; }
+  .sidebar a:hover { background: rgba(255,255,255,0.1); color: rgba(255,255,255,0.9); }
+  .sidebar a.active { background: rgba(255,255,255,0.15); color: white; font-weight: 600; }
+  .sidebar a.active::before { content: ''; position: absolute; left: 0; top: 50%; transform: translateY(-50%); width: 3px; height: 16px; background: #FF8654; border-radius: 0 3px 3px 0; }
+  .sidebar .sub-link { font-size: 11px; padding: 5px 12px 5px 24px; color: rgba(255,255,255,0.4); }
+  .sidebar .sub-link:hover { color: rgba(255,255,255,0.7); }
+  .sidebar .sub-link.active { color: rgba(255,255,255,0.9); }
+  .sidebar .sub-link.active::before { height: 12px; }
+  .sidebar .section-label { color: rgba(255,255,255,0.4); font-size: 10px; text-transform: uppercase; letter-spacing: 1px; font-weight: 700; padding: 16px 12px 6px; }
+
+  /* Main */
+  .main { margin-left: 260px; padding: 32px 48px; max-width: 1000px; }
+
+  /* Typography */
+  h2 { font-size: 28px; font-weight: 800; color: var(--purple); margin: 48px 0 16px; padding-bottom: 12px; border-bottom: 2px solid var(--purple-light); }
+  h2:first-of-type { margin-top: 0; }
+  h3 { font-size: 18px; font-weight: 700; margin: 32px 0 12px; color: var(--text); }
+  h4 { font-size: 15px; font-weight: 700; margin: 20px 0 8px; color: var(--purple); }
+  p { margin-bottom: 12px; font-size: 14px; }
+
+  /* Tables */
+  table { width: 100%; border-collapse: collapse; margin: 16px 0 24px; font-size: 13px; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+  th { background: var(--purple-light); color: var(--purple); font-weight: 700; text-align: left; padding: 10px 16px; font-size: 12px; }
+  td { padding: 10px 16px; border-top: 1px solid #f0f0f0; }
+  tr:hover td { background: #faf9ff; }
+
+  /* Cards */
+  .card { background: white; border-radius: 16px; padding: 24px; margin: 16px 0; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+  .card-purple { background: linear-gradient(135deg, #EDE9F6, #D8D0F0); border: none; }
+
+  /* Badges */
+  .badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; margin-right: 4px; }
+  .badge-purple { background: var(--purple); color: white; }
+  .badge-green { background: #10b981; color: white; }
+  .badge-amber { background: #f59e0b; color: white; }
+  .badge-blue { background: #3b82f6; color: white; }
+  .badge-red { background: #ef4444; color: white; }
+  .badge-gray { background: #94a3b8; color: white; }
+  .badge-indigo { background: #6366f1; color: white; }
+
+  /* Code */
+  code { background: var(--purple-light); color: var(--purple); padding: 2px 6px; border-radius: 4px; font-size: 12px; font-family: 'JetBrains Mono', monospace; }
+  pre { background: #1e1e2e; color: #cdd6f4; padding: 20px; border-radius: 12px; overflow-x: auto; font-size: 12px; line-height: 1.6; margin: 12px 0 24px; font-family: 'JetBrains Mono', monospace; }
+  pre .kw { color: #cba6f7; } pre .str { color: #a6e3a1; } pre .cm { color: #6c7086; } pre .fn { color: #89b4fa; } pre .ty { color: #fab387; }
+
+  /* Workflow */
+  .workflow { display: flex; gap: 12px; align-items: flex-start; margin: 20px 0 28px; flex-wrap: wrap; }
+  .wf-step { flex: 1; min-width: 160px; background: white; border-radius: 14px; padding: 20px; text-align: center; box-shadow: 0 1px 4px rgba(0,0,0,0.06); position: relative; }
+  .wf-step .num { width: 32px; height: 32px; border-radius: 50%; background: var(--purple); color: white; font-weight: 800; font-size: 14px; display: flex; align-items: center; justify-content: center; margin: 0 auto 10px; }
+  .wf-step .title { font-size: 14px; font-weight: 700; color: var(--text); }
+  .wf-step .role { font-size: 11px; color: var(--muted); margin-top: 4px; }
+  .wf-step .desc { font-size: 12px; color: var(--muted); margin-top: 8px; line-height: 1.5; }
+  .wf-arrow { display: flex; align-items: center; color: var(--purple); font-size: 20px; font-weight: 700; padding-top: 24px; }
+
+  /* File tree */
+  .tree { font-family: 'JetBrains Mono', monospace; font-size: 12px; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); line-height: 1.8; }
+  .tree .folder { color: var(--purple); font-weight: 700; }
+  .tree .file { color: var(--text); }
+  .tree .comment { color: var(--muted); font-size: 11px; }
+
+  /* Info box */
+  .info { background: #fef3c7; border-left: 4px solid #f59e0b; padding: 12px 16px; border-radius: 0 8px 8px 0; margin: 16px 0; font-size: 13px; }
+  .info-purple { background: var(--purple-light); border-left-color: var(--purple); }
+
+  /* Data flow diagram */
+  .flow-diagram { background: white; border-radius: 16px; padding: 28px; margin: 16px 0; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+  .flow-row { display: flex; align-items: center; gap: 8px; margin: 8px 0; font-size: 13px; }
+  .flow-box { background: var(--purple-light); color: var(--purple); padding: 6px 14px; border-radius: 8px; font-weight: 600; font-size: 12px; white-space: nowrap; }
+  .flow-box-green { background: #d1fae5; color: #059669; }
+  .flow-box-red { background: #fee2e2; color: #dc2626; }
+  .flow-box-amber { background: #fef3c7; color: #d97706; }
+  .flow-arrow { color: var(--muted); font-size: 16px; }
+
+  /* Flowchart diagrams */
+  .fc { margin: 20px 0 28px; }
+  .fc-node { display: inline-flex; align-items: center; gap: 6px; padding: 10px 16px; border-radius: 12px; font-size: 12px; font-weight: 600; position: relative; }
+  .fc-start { background: var(--purple); color: white; border-radius: 24px; }
+  .fc-process { background: white; border: 2px solid var(--purple); color: var(--purple); }
+  .fc-decision { background: #fef3c7; border: 2px solid #f59e0b; color: #92400e; transform: rotate(0deg); }
+  .fc-end { background: #d1fae5; border: 2px solid #10b981; color: #065f46; border-radius: 24px; }
+  .fc-error { background: #fee2e2; border: 2px solid #ef4444; color: #991b1b; border-radius: 24px; }
+  .fc-auto { background: #ede9f6; border: 2px dashed var(--purple); color: var(--purple); font-style: italic; }
+  .fc-arrow { display: inline-flex; align-items: center; color: var(--muted); font-size: 18px; margin: 0 6px; font-weight: 700; }
+  .fc-arrow-down { display: block; text-align: center; color: var(--muted); font-size: 18px; margin: 4px 0; font-weight: 700; }
+  .fc-row { display: flex; align-items: center; flex-wrap: wrap; gap: 4px; margin: 8px 0; }
+  .fc-branch { margin-left: 48px; border-left: 3px solid #e2e5ea; padding-left: 16px; }
+  .fc-branch-label { font-size: 11px; font-weight: 700; margin-bottom: 4px; }
+  .fc-swimlane { border: 2px solid #e2e5ea; border-radius: 14px; padding: 12px 16px; margin: 12px 0; }
+  .fc-swimlane-header { font-size: 11px; font-weight: 700; color: white; padding: 4px 12px; border-radius: 8px; display: inline-block; margin-bottom: 10px; }
+  .fc-connector { width: 2px; height: 20px; background: #e2e5ea; margin: 0 auto; }
+  .fc-grid { display: grid; gap: 12px; }
+  .fc-grid-2 { grid-template-columns: 1fr 1fr; }
+  .fc-grid-3 { grid-template-columns: 1fr 1fr 1fr; }
+
+  /* Lo-fi Wireframe mockups */
+  .wireframe { background: #f8f9fb; border: 2px solid #e2e5ea; border-radius: 14px; padding: 16px; margin: 16px 0 24px; font-size: 11px; color: var(--muted); overflow: hidden; }
+  .wf-sidebar { width: 48px; background: var(--purple); border-radius: 8px; float: left; margin-right: 12px; }
+  .wf-sidebar div { height: 8px; background: rgba(255,255,255,0.3); border-radius: 4px; margin: 6px 8px; }
+  .wf-sidebar .wf-active { background: #FF8654; }
+  .wf-content { overflow: hidden; }
+  .wf-bar { height: 10px; background: #e2e5ea; border-radius: 5px; margin-bottom: 8px; }
+  .wf-bar-purple { background: var(--purple-light); }
+  .wf-bar-accent { background: var(--purple); opacity: 0.3; }
+  .wf-box { background: white; border: 1.5px solid #e2e5ea; border-radius: 8px; padding: 8px; margin-bottom: 8px; }
+  .wf-box-purple { background: var(--purple-light); border-color: #c8bfe8; }
+  .wf-grid { display: grid; gap: 6px; }
+  .wf-grid-2 { grid-template-columns: 1fr 1fr; }
+  .wf-grid-3 { grid-template-columns: 1fr 1fr 1fr; }
+  .wf-grid-4 { grid-template-columns: 1fr 1fr 1fr 1fr; }
+  .wf-grid-5 { grid-template-columns: 1fr 1fr 1fr 1fr 1fr; }
+  .wf-pill { display: inline-block; background: var(--purple); color: white; border-radius: 10px; padding: 2px 8px; font-size: 9px; font-weight: 700; }
+  .wf-pill-gray { background: #e2e5ea; color: var(--muted); }
+  .wf-pill-green { background: #10b981; }
+  .wf-pill-amber { background: #f59e0b; }
+  .wf-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--purple); display: inline-block; }
+  .wf-text { height: 6px; background: #d1d5db; border-radius: 3px; }
+  .wf-text-sm { height: 4px; }
+  .wf-row { display: flex; gap: 8px; align-items: center; margin-bottom: 6px; }
+  .wf-col { display: flex; flex-direction: column; gap: 6px; }
+  .wf-flex { display: flex; gap: 8px; }
+  .wf-label { font-size: 9px; color: var(--purple); font-weight: 700; margin-bottom: 2px; }
+  .wf-input { height: 20px; background: white; border: 1.5px solid #e2e5ea; border-radius: 6px; }
+  .wf-btn { height: 22px; background: var(--purple); border-radius: 8px; }
+  .wf-btn-ghost { background: white; border: 1.5px solid #e2e5ea; }
+  .wf-avatar { width: 24px; height: 24px; border-radius: 50%; background: var(--purple-light); flex-shrink: 0; }
+  .wf-table-row { display: flex; gap: 4px; padding: 4px 0; border-bottom: 1px solid #f0f0f0; }
+  .wf-table-row > div { flex: 1; }
+  .wf-stepper { display: flex; align-items: center; gap: 4px; margin-bottom: 10px; }
+  .wf-stepper .step { width: 10px; height: 10px; border-radius: 50%; background: var(--purple); }
+  .wf-stepper .step-gray { background: #e2e5ea; }
+  .wf-stepper .line { flex: 1; height: 2px; background: var(--purple); }
+  .wf-stepper .line-gray { background: #e2e5ea; }
+
+  /* Responsive */
+  @media (max-width: 768px) {
+    .sidebar { display: none; }
+    .main { margin-left: 0; padding: 20px; }
+    .workflow { flex-direction: column; }
+    .wf-arrow { transform: rotate(90deg); padding: 0; margin: 0 auto; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Sidebar -->
+<nav class="sidebar">
+  <h1>HOSxP Oncology</h1>
+  <p class="sub">Chemo CPOE Tutorial</p>
+
+  <div class="section-label">สำหรับ PM</div>
+  <a href="#overview" data-nav>ภาพรวมระบบ</a>
+  <a href="#roles" data-nav>บทบาทผู้ใช้งาน</a>
+  <a href="#workflow" data-nav>Workflow ภาพรวม</a>
+  <a href="#pages" data-nav>คู่มือแต่ละหน้า</a>
+  <a href="#page-login" class="sub-link" data-nav>Login</a>
+  <a href="#page-overview" class="sub-link" data-nav>หน้าหลัก</a>
+  <a href="#page-register" class="sub-link" data-nav>ลงทะเบียน</a>
+  <a href="#page-order" class="sub-link" data-nav>สั่งยาเคมีบำบัด</a>
+  <a href="#page-pharm" class="sub-link" data-nav>ตรวจสอบ/เตรียมยา</a>
+  <a href="#page-regimen" class="sub-link" data-nav>สูตรยา</a>
+  <a href="#page-billing" class="sub-link" data-nav>ค่าใช้จ่าย</a>
+
+  <div class="section-label">สำหรับ Developer</div>
+  <a href="#dataflow" data-nav>Data Flow</a>
+  <a href="#structure" data-nav>โครงสร้างโค้ด</a>
+  <a href="#mockdata" data-nav>Mock Data</a>
+
+  <div class="section-label">อื่นๆ</div>
+  <a href="#toast" data-nav>Toast Notifications</a>
+  <a href="#printing" data-nav>การพิมพ์เอกสาร</a>
+  <a href="#coverage" data-nav>สิทธิการรักษา</a>
+  <a href="#notes" data-nav>หมายเหตุ</a>
+</nav>
+
+<!-- Main Content -->
+<div class="main">
+
+<!-- ═══ 1. Overview ═══ -->
+<h2 id="overview">ภาพรวมระบบ</h2>
+
+<div class="card card-purple">
+  <h3 style="margin-top:0; color: var(--purple);">HOSxP Oncology Chemo CPOE</h3>
+  <p>ระบบ Computerized Physician Order Entry สำหรับการสั่งยาเคมีบำบัด ครอบคลุมกระบวนการตั้งแต่<strong>ลงทะเบียนผู้ป่วย → สั่งยา → ตรวจสอบ/เตรียมยา → ให้ยา → ออกใบแจ้งหนี้</strong></p>
+  <p>
+    <span class="badge badge-purple">React 19</span>
+    <span class="badge badge-blue">TypeScript</span>
+    <span class="badge badge-green">Tailwind v4</span>
+    <span class="badge badge-amber">HeroUI</span>
+    <span class="badge badge-gray">Vite 7</span>
+  </p>
+</div>
+
+<div class="info info-purple">
+  <strong>Prototype</strong> — ระบบนี้เป็น Frontend MVP ไม่มี Backend จริง ข้อมูลเก็บใน React State และจะหายเมื่อ Refresh หน้า<br>
+  <strong>PIN Code</strong> สำหรับทุก Role: <code>123456</code>
+</div>
+
+<!-- ═══ 2. Roles ═══ -->
+<h2 id="roles">บทบาทผู้ใช้งาน</h2>
+
+<p>ระบบรองรับ 5 บทบาท สลับ Role ได้จากเมนูด้านล่างซ้ายของ Sidebar</p>
+
+<table>
+  <tr><th>บทบาท</th><th>ชื่อแสดง</th><th>สิ่งที่ทำได้</th></tr>
+  <tr><td><span class="badge badge-blue">ONC_DOCTOR</span></td><td>นพ.สมชาย รักษาดี</td><td>ลงทะเบียนผู้ป่วย, สั่งยาเคมีบำบัด, ดูประวัติ, วางแผนการรักษา</td></tr>
+  <tr><td><span class="badge badge-purple">ONC_PHARMACIST</span></td><td>ภก.วิไล ใจดี</td><td>ตรวจสอบคำสั่งยา, เตรียมยา, จัดการสูตรยา (Regimen Master)</td></tr>
+  <tr><td><span class="badge badge-green">CHEMO_NURSE</span></td><td>พว.อรุณ แสงทอง</td><td>บันทึกการให้ยา, ติดตามสถานะผู้ป่วย</td></tr>
+  <tr><td><span class="badge badge-indigo">BILLING_OFFICER</span></td><td>คุณสมศรี บัญชี</td><td>ตรวจสอบค่าใช้จ่าย, ออกใบแจ้งหนี้</td></tr>
+  <tr><td><span class="badge badge-gray">ADMIN</span></td><td>Admin ระบบ</td><td>จัดการค่าใช้จ่าย, ตั้งค่าระบบ</td></tr>
+</table>
+
+<!-- ═══ 3. Workflow ═══ -->
+<h2 id="workflow">Workflow ภาพรวม</h2>
+
+<div class="workflow">
+  <div class="wf-step">
+    <div class="num">1</div>
+    <div class="title">ลงทะเบียน</div>
+    <div class="role"><span class="badge badge-blue">Doctor</span></div>
+    <div class="desc">กรอก HN → ดึงข้อมูล HOSxP → กรอก Diagnosis/Stage/TNM → ลงทะเบียน</div>
+  </div>
+  <div class="wf-arrow">→</div>
+  <div class="wf-step">
+    <div class="num">2</div>
+    <div class="title">สั่งยา</div>
+    <div class="role"><span class="badge badge-blue">Doctor</span></div>
+    <div class="desc">ECOG → เลือก Protocol → คำนวณขนาดยา → กำหนดวัน → ลงนาม PIN</div>
+  </div>
+  <div class="wf-arrow">→</div>
+  <div class="wf-step">
+    <div class="num">3</div>
+    <div class="title">ตรวจสอบ/เตรียมยา</div>
+    <div class="role"><span class="badge badge-purple">Pharmacist</span></div>
+    <div class="desc">ตรวจสอบ Lab Safety → กรอก Lot/Expiry → ลงนาม → พิมพ์ QR Sticker</div>
+  </div>
+  <div class="wf-arrow">→</div>
+  <div class="wf-step">
+    <div class="num">4</div>
+    <div class="title">ให้ยา</div>
+    <div class="role"><span class="badge badge-green">Nurse</span></div>
+    <div class="desc">บันทึกการให้ยาข้างเตียง รับยาจาก QR Scan</div>
+  </div>
+  <div class="wf-arrow">→</div>
+  <div class="wf-step">
+    <div class="num">5</div>
+    <div class="title">ค่าใช้จ่าย</div>
+    <div class="role"><span class="badge badge-indigo">Billing</span></div>
+    <div class="desc">ตรวจสอบรายการ → ยืนยัน PIN → พิมพ์ใบแจ้งหนี้</div>
+  </div>
+</div>
+
+<h4>Flowchart: กระบวนการสั่งยาเคมีบำบัด</h4>
+<div class="fc">
+  <div class="fc-row">
+    <div class="fc-node fc-start">🏥 ผู้ป่วยมาพบแพทย์</div>
+    <span class="fc-arrow">→</span>
+    <div class="fc-node fc-process">📋 ลงทะเบียน (HN → HOSxP → Diagnosis/TNM)</div>
+    <span class="fc-arrow">→</span>
+    <div class="fc-node fc-process">💊 สั่งยา (5 Steps)</div>
+  </div>
+  <div class="fc-arrow-down">↓</div>
+  <div class="fc-row">
+    <div class="fc-node fc-decision">🔍 เภสัชกรตรวจสอบ<br><span style="font-size: 10px; font-weight: 400;">Lab Safety + Dose Check</span></div>
+  </div>
+  <div class="fc-branch">
+    <div class="fc-branch-label" style="color: #10b981;">✅ อนุมัติ</div>
+    <div class="fc-row">
+      <div class="fc-node fc-process">🧪 กรอก Lot/Expiry/Qty</div>
+      <span class="fc-arrow">→</span>
+      <div class="fc-node fc-process">✍️ ลงนาม PIN</div>
+      <span class="fc-arrow">→</span>
+      <div class="fc-node fc-end">🏷️ พิมพ์ QR Sticker</div>
+    </div>
+    <div class="fc-row" style="margin-top: 4px;">
+      <div class="fc-node fc-auto">⚡ Auto: สร้าง Billing Record</div>
+      <span class="fc-arrow">→</span>
+      <div class="fc-node fc-auto">🔔 Auto: แจ้ง Nurse + Doctor</div>
+    </div>
+    <div class="fc-arrow-down">↓</div>
+    <div class="fc-row">
+      <div class="fc-node fc-process">💉 พยาบาลให้ยา</div>
+      <span class="fc-arrow">→</span>
+      <div class="fc-node fc-process">💰 เจ้าหน้าที่การเงินยืนยัน</div>
+      <span class="fc-arrow">→</span>
+      <div class="fc-node fc-end">🧾 ออกใบแจ้งหนี้ + พิมพ์</div>
+    </div>
+  </div>
+  <div class="fc-branch" style="margin-top: 8px;">
+    <div class="fc-branch-label" style="color: #ef4444;">❌ ปฏิเสธ</div>
+    <div class="fc-row">
+      <div class="fc-node fc-error">📝 กรอกเหตุผล</div>
+      <span class="fc-arrow">→</span>
+      <div class="fc-node fc-auto">🔔 Auto: แจ้ง Doctor</div>
+      <span class="fc-arrow">→</span>
+      <div class="fc-node fc-process">🔄 Doctor แก้ไขคำสั่งยา</div>
+    </div>
+  </div>
+</div>
+
+<h4>Swimlane: บทบาทและความรับผิดชอบ</h4>
+<div class="fc-grid fc-grid-2" style="margin: 16px 0 28px;">
+  <div class="fc-swimlane">
+    <div class="fc-swimlane-header" style="background: #3b82f6;">🩺 แพทย์ (Doctor)</div>
+    <div class="fc-row"><div class="fc-node fc-process" style="font-size: 11px; padding: 6px 10px;">ลงทะเบียนผู้ป่วย</div></div>
+    <div class="fc-row"><div class="fc-node fc-process" style="font-size: 11px; padding: 6px 10px;">ประเมิน ECOG</div></div>
+    <div class="fc-row"><div class="fc-node fc-process" style="font-size: 11px; padding: 6px 10px;">เลือก Protocol + คำนวณยา</div></div>
+    <div class="fc-row"><div class="fc-node fc-process" style="font-size: 11px; padding: 6px 10px;">ลงนามคำสั่งยา (PIN)</div></div>
+  </div>
+  <div class="fc-swimlane">
+    <div class="fc-swimlane-header" style="background: var(--purple);">💊 เภสัชกร (Pharmacist)</div>
+    <div class="fc-row"><div class="fc-node fc-process" style="font-size: 11px; padding: 6px 10px;">ตรวจสอบ Lab + Dose</div></div>
+    <div class="fc-row"><div class="fc-node fc-decision" style="font-size: 11px; padding: 6px 10px;">อนุมัติ / ปฏิเสธ</div></div>
+    <div class="fc-row"><div class="fc-node fc-process" style="font-size: 11px; padding: 6px 10px;">เตรียมยา (Lot/Expiry)</div></div>
+    <div class="fc-row"><div class="fc-node fc-process" style="font-size: 11px; padding: 6px 10px;">จัดการ Regimen Master</div></div>
+  </div>
+  <div class="fc-swimlane">
+    <div class="fc-swimlane-header" style="background: #10b981;">💉 พยาบาล (Nurse)</div>
+    <div class="fc-row"><div class="fc-node fc-process" style="font-size: 11px; padding: 6px 10px;">รับยาจากเภสัชกร</div></div>
+    <div class="fc-row"><div class="fc-node fc-process" style="font-size: 11px; padding: 6px 10px;">Scan QR → ยืนยันตัวผู้ป่วย</div></div>
+    <div class="fc-row"><div class="fc-node fc-process" style="font-size: 11px; padding: 6px 10px;">บันทึกการให้ยา</div></div>
+  </div>
+  <div class="fc-swimlane">
+    <div class="fc-swimlane-header" style="background: #6366f1;">💰 การเงิน (Billing)</div>
+    <div class="fc-row"><div class="fc-node fc-auto" style="font-size: 11px; padding: 6px 10px;">รับ Billing Record อัตโนมัติ</div></div>
+    <div class="fc-row"><div class="fc-node fc-process" style="font-size: 11px; padding: 6px 10px;">ตรวจสอบรายการ + สิทธิ</div></div>
+    <div class="fc-row"><div class="fc-node fc-process" style="font-size: 11px; padding: 6px 10px;">ยืนยัน + ออกใบแจ้งหนี้</div></div>
+  </div>
+</div>
+
+<h4>Notification Flow (การแจ้งเตือนข้ามบทบาท)</h4>
+<div class="fc" style="background: white; border-radius: 16px; padding: 20px; box-shadow: 0 1px 4px rgba(0,0,0,0.06);">
+  <div style="display: flex; gap: 20px; align-items: flex-start;">
+    <!-- Doctor column -->
+    <div style="flex: 1; text-align: center;">
+      <div class="fc-swimlane-header" style="background: #3b82f6;">Doctor</div>
+      <div class="fc-node fc-process" style="font-size: 10px; margin: 8px auto; display: block; max-width: 140px;">สร้างคำสั่งยา</div>
+      <div class="fc-arrow-down" style="margin: 0;">↓</div>
+      <div style="font-size: 9px; color: #f59e0b; font-weight: 700;">🔔 Notification</div>
+      <div style="font-size: 20px; color: var(--muted);">⤵</div>
+    </div>
+    <!-- Pharmacist column -->
+    <div style="flex: 1; text-align: center;">
+      <div class="fc-swimlane-header" style="background: var(--purple);">Pharmacist</div>
+      <div class="fc-node fc-decision" style="font-size: 10px; margin: 8px auto; display: block; max-width: 140px;">ตรวจสอบ</div>
+      <div style="display: flex; gap: 8px; justify-content: center; margin-top: 8px;">
+        <div style="text-align: center;">
+          <div style="font-size: 9px; color: #10b981; font-weight: 700;">✅</div>
+          <div style="font-size: 20px;">⤵</div>
+        </div>
+        <div style="text-align: center;">
+          <div style="font-size: 9px; color: #ef4444; font-weight: 700;">❌</div>
+          <div style="font-size: 20px;">⤴</div>
+        </div>
+      </div>
+    </div>
+    <!-- Nurse column -->
+    <div style="flex: 1; text-align: center;">
+      <div class="fc-swimlane-header" style="background: #10b981;">Nurse</div>
+      <div class="fc-node fc-end" style="font-size: 10px; margin: 8px auto; display: block; max-width: 140px;">🔔 ยาพร้อม</div>
+      <div class="fc-arrow-down" style="margin: 0;">↓</div>
+      <div class="fc-node fc-process" style="font-size: 10px; margin: 4px auto; display: block; max-width: 140px;">ให้ยาผู้ป่วย</div>
+    </div>
+    <!-- Billing column -->
+    <div style="flex: 1; text-align: center;">
+      <div class="fc-swimlane-header" style="background: #6366f1;">Billing</div>
+      <div class="fc-node fc-auto" style="font-size: 10px; margin: 8px auto; display: block; max-width: 140px;">🔔 Auto Billing</div>
+      <div class="fc-arrow-down" style="margin: 0;">↓</div>
+      <div class="fc-node fc-end" style="font-size: 10px; margin: 4px auto; display: block; max-width: 140px;">ออกใบแจ้งหนี้</div>
+    </div>
+  </div>
+</div>
+
+<h4>Order Entry: 5-Step Wizard</h4>
+<div class="fc" style="background: white; border-radius: 16px; padding: 20px; box-shadow: 0 1px 4px rgba(0,0,0,0.06);">
+  <div style="display: flex; align-items: flex-start; gap: 8px;">
+    <div style="flex: 1; text-align: center;">
+      <div style="width: 36px; height: 36px; border-radius: 50%; background: var(--purple); color: white; font-weight: 800; font-size: 16px; display: flex; align-items: center; justify-content: center; margin: 0 auto 6px;">1</div>
+      <div style="font-size: 11px; font-weight: 700; color: var(--text);">ประเมิน ECOG</div>
+      <div style="font-size: 10px; color: var(--muted); margin-top: 4px;">เลือกระดับ 0-4<br>ตาม WHO criteria</div>
+    </div>
+    <div style="flex: 0; padding-top: 16px; color: var(--purple); font-weight: 700;">→</div>
+    <div style="flex: 1; text-align: center;">
+      <div style="width: 36px; height: 36px; border-radius: 50%; background: var(--purple); color: white; font-weight: 800; font-size: 16px; display: flex; align-items: center; justify-content: center; margin: 0 auto 6px;">2</div>
+      <div style="font-size: 11px; font-weight: 700; color: var(--text);">เลือก Protocol</div>
+      <div style="font-size: 10px; color: var(--muted); margin-top: 4px;">กรองตามชนิดมะเร็ง<br>CAF, FOLFOX6, GEM...</div>
+    </div>
+    <div style="flex: 0; padding-top: 16px; color: var(--purple); font-weight: 700;">→</div>
+    <div style="flex: 1; text-align: center;">
+      <div style="width: 36px; height: 36px; border-radius: 50%; background: var(--purple); color: white; font-weight: 800; font-size: 16px; display: flex; align-items: center; justify-content: center; margin: 0 auto 6px;">3</div>
+      <div style="font-size: 11px; font-weight: 700; color: var(--text);">คำนวณขนาดยา</div>
+      <div style="font-size: 10px; color: var(--muted); margin-top: 4px;">BSA / AUC / Weight<br>ปรับ Dose Reduction</div>
+    </div>
+    <div style="flex: 0; padding-top: 16px; color: var(--purple); font-weight: 700;">→</div>
+    <div style="flex: 1; text-align: center;">
+      <div style="width: 36px; height: 36px; border-radius: 50%; background: var(--purple); color: white; font-weight: 800; font-size: 16px; display: flex; align-items: center; justify-content: center; margin: 0 auto 6px;">4</div>
+      <div style="font-size: 11px; font-weight: 700; color: var(--text);">กำหนดการให้ยา</div>
+      <div style="font-size: 10px; color: var(--muted); margin-top: 4px;">วันนัด, Cycle<br>Clinical Notes</div>
+    </div>
+    <div style="flex: 0; padding-top: 16px; color: var(--purple); font-weight: 700;">→</div>
+    <div style="flex: 1; text-align: center;">
+      <div style="width: 36px; height: 36px; border-radius: 50%; background: #10b981; color: white; font-weight: 800; font-size: 16px; display: flex; align-items: center; justify-content: center; margin: 0 auto 6px;">5</div>
+      <div style="font-size: 11px; font-weight: 700; color: var(--text);">ตรวจสอบ + ลงนาม</div>
+      <div style="font-size: 10px; color: var(--muted); margin-top: 4px;">Preview A4<br>PIN → สร้าง Order</div>
+    </div>
+  </div>
+</div>
+
+<h4>Billing Flow</h4>
+<div class="fc">
+  <div class="fc-row">
+    <div class="fc-node fc-auto">⚡ เภสัชกรเตรียมยาเสร็จ</div>
+    <span class="fc-arrow">→</span>
+    <div class="fc-node fc-auto">📄 Auto-generate Billing<br><span style="font-size: 9px; font-weight: 400;">ยา + สารละลาย + ค่าบริการ</span></div>
+    <span class="fc-arrow">→</span>
+    <div class="fc-node fc-auto">🔔 แจ้ง Billing Officer</div>
+  </div>
+  <div class="fc-arrow-down">↓</div>
+  <div class="fc-row">
+    <div class="fc-node fc-process">👀 ตรวจสอบรายการ + สิทธิ</div>
+    <span class="fc-arrow">→</span>
+    <div class="fc-node fc-process">🔐 ยืนยัน PIN</div>
+    <span class="fc-arrow">→</span>
+    <div class="fc-node fc-end">🧾 ออกใบแจ้งหนี้ + 🖨️ พิมพ์ A4</div>
+  </div>
+</div>
+
+<!-- ═══ 4. Pages ═══ -->
+<h2 id="pages">คู่มือการใช้งานแต่ละหน้า</h2>
+
+<h3 id="page-login">4.1 หน้า Login</h3>
+<div class="card">
+  <p>เปิดระบบ → กดปุ่ม <strong>"เข้าสู่ระบบ"</strong> → Login อัตโนมัติเป็น ONC_DOCTOR</p>
+  <p>เปลี่ยน Role ได้จาก Sidebar ด้านล่างซ้าย</p>
+</div>
+<div class="wireframe" style="height: 180px;">
+  <div style="display: flex; height: 100%;">
+    <div style="flex: 1; display: flex; flex-direction: column; justify-content: center; padding: 16px;">
+      <div class="wf-pill-gray wf-pill" style="width: 140px; margin-bottom: 8px;">ขับเคลื่อนโดย BMS</div>
+      <div class="wf-bar" style="width: 70%; height: 14px; background: var(--purple); opacity: 0.6; border-radius: 4px;"></div>
+      <div class="wf-bar" style="width: 55%; height: 14px; background: var(--purple); opacity: 0.4; margin-top: 4px; border-radius: 4px;"></div>
+      <div class="wf-text" style="width: 80%; margin: 10px 0;"></div>
+      <div class="wf-text" style="width: 60%;"></div>
+      <div class="wf-btn" style="width: 100px; margin-top: 12px;"></div>
+    </div>
+    <div style="flex: 0.6; display: flex; align-items: center; justify-content: center;">
+      <div style="width: 100px; height: 120px; background: var(--purple-light); border-radius: 12px; display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 6px;">
+        <div style="background: var(--purple); border-radius: 20px 6px 6px 6px; opacity: 0.5;"></div>
+        <div style="background: #10b981; border-radius: 6px 6px 20px 6px; opacity: 0.4;"></div>
+        <div style="background: #f59e0b; border-radius: 6px 20px 6px 6px; opacity: 0.4;"></div>
+        <div style="background: #3b82f6; border-radius: 6px 6px 6px 20px; opacity: 0.4;"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<h3 id="page-overview">4.2 หน้าหลัก (Overview)</h3>
+<div class="card">
+  <p><strong>Banner</strong>: แสดงชื่อ Role + ปุ่มลงทะเบียนผู้ป่วยใหม่</p>
+  <p><strong>Pipeline Stats</strong>: 5 สถานะ — รอแพทย์สั่งยา, เภสัชกรตรวจสอบ, เตรียมยา, รอพยาบาลให้ยา, ให้ยาครบ</p>
+  <p><strong>ตารางผู้ป่วย</strong>: ค้นหา/กรองสถานะ → คลิกเพื่อเข้าดูรายละเอียด</p>
+</div>
+<div class="wireframe">
+  <div class="wf-flex">
+    <div class="wf-sidebar" style="height: 200px;">
+      <div style="height: 4px; background: white; border-radius: 2px; margin: 10px 8px 12px;"></div>
+      <div></div><div class="wf-active"></div><div></div><div></div>
+    </div>
+    <div class="wf-content" style="flex: 1;">
+      <div class="wf-box-purple" style="padding: 10px; margin-bottom: 8px;">
+        <div class="wf-bar" style="width: 40%; background: var(--purple); opacity: 0.5;"></div>
+        <div class="wf-text" style="width: 60%; margin: 6px 0;"></div>
+        <div class="wf-btn" style="width: 80px; height: 16px;"></div>
+      </div>
+      <div class="wf-grid wf-grid-5" style="margin-bottom: 8px;">
+        <div class="wf-box" style="text-align: center;"><div style="font-size: 16px; font-weight: 800; color: var(--purple);">3</div><div class="wf-text-sm wf-text" style="width: 60%; margin: 3px auto 0;"></div></div>
+        <div class="wf-box" style="text-align: center;"><div style="font-size: 16px; font-weight: 800; color: #6366f1;">30</div><div class="wf-text-sm wf-text" style="width: 60%; margin: 3px auto 0;"></div></div>
+        <div class="wf-box" style="text-align: center;"><div style="font-size: 16px; font-weight: 800; color: #f59e0b;">12</div><div class="wf-text-sm wf-text" style="width: 60%; margin: 3px auto 0;"></div></div>
+        <div class="wf-box" style="text-align: center;"><div style="font-size: 16px; font-weight: 800; color: #10b981;">25</div><div class="wf-text-sm wf-text" style="width: 60%; margin: 3px auto 0;"></div></div>
+        <div class="wf-box" style="text-align: center;"><div style="font-size: 16px; font-weight: 800; color: #94a3b8;">25</div><div class="wf-text-sm wf-text" style="width: 60%; margin: 3px auto 0;"></div></div>
+      </div>
+      <div class="wf-box" style="padding: 6px;">
+        <div class="wf-row"><div class="wf-input" style="width: 120px;"></div><div style="flex:1;"></div><div class="wf-pill">ทั้งหมด</div><div class="wf-pill-gray wf-pill">รอแพทย์</div><div class="wf-pill-gray wf-pill">เภสัชกร</div></div>
+        <div class="wf-table-row" style="font-size: 9px; color: #aaa; font-weight: 600;"><div>ผู้ป่วย</div><div>HN</div><div>Protocol</div><div>แพทย์</div><div>สถานะ</div></div>
+        <div class="wf-table-row"><div class="wf-row"><div class="wf-avatar"></div><div class="wf-text" style="width: 50px;"></div></div><div class="wf-text" style="width: 40px;"></div><div><span class="wf-pill" style="font-size: 8px;">CAF</span></div><div class="wf-text" style="width: 50px;"></div><div><span class="wf-pill" style="font-size: 8px; background: var(--purple);">รอแพทย์</span></div></div>
+        <div class="wf-table-row"><div class="wf-row"><div class="wf-avatar"></div><div class="wf-text" style="width: 50px;"></div></div><div class="wf-text" style="width: 40px;"></div><div><span class="wf-pill" style="font-size: 8px;">FOLFOX6</span></div><div class="wf-text" style="width: 50px;"></div><div><span class="wf-pill-green wf-pill" style="font-size: 8px;">รอพยาบาล</span></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<h3 id="page-register">4.3 ลงทะเบียนผู้ป่วย</h3>
+<div class="card">
+  <p><strong>Step 1</strong>: กรอก HN → กดค้นหา</p>
+  <div class="info">ทดลองค้นหาด้วย HN: <code>550123</code>, <code>660234</code>, <code>770345</code></div>
+  <p><strong>Step 2</strong>: ข้อมูลผู้ป่วย (ซ้าย) + ฟอร์มวินิจฉัย (ขวา)</p>
+  <ul style="font-size: 13px; padding-left: 20px; margin-bottom: 12px;">
+    <li>Diagnosis — dropdown เลือกชนิดมะเร็ง (auto-fill ICD-10)</li>
+    <li>Morphology — กรอกข้อความ</li>
+    <li>Stage — toggle buttons (I → IVB)</li>
+    <li>TNM Staging — toggle buttons แยก 3 cards พร้อม illustration</li>
+  </ul>
+  <p>กด <strong>"ลงทะเบียน"</strong> → Skeleton Animation → Redirect ไปหน้าผู้ป่วย</p>
+</div>
+<!-- Wireframe: Registration Step 1 + 2 -->
+<div class="wireframe">
+  <div class="wf-label">Step 1 — ค้นหาผู้ป่วย</div>
+  <div class="wf-stepper"><div class="step"></div><div class="line"></div><div class="step-gray step"></div></div>
+  <div style="display: flex; justify-content: center;">
+    <div class="wf-box" style="width: 300px; padding: 12px;">
+      <div class="wf-row"><div class="wf-dot"></div><div class="wf-text" style="width: 120px;"></div></div>
+      <div class="wf-row" style="margin-top: 6px;"><div class="wf-pill">เลข HN</div><div class="wf-pill-gray wf-pill">เลขบัตรประชาชน</div></div>
+      <div class="wf-row" style="margin-top: 8px;"><div class="wf-input" style="flex: 1;"></div><div class="wf-btn" style="width: 50px;"></div></div>
+      <div class="wf-row" style="margin-top: 6px;"><span class="wf-pill" style="font-size: 8px;">550123</span><span class="wf-pill" style="font-size: 8px;">660234</span><span class="wf-pill" style="font-size: 8px;">770345</span></div>
+    </div>
+  </div>
+  <div class="wf-label" style="margin-top: 16px;">Step 2 — ยืนยันข้อมูล</div>
+  <div class="wf-stepper"><div class="step"></div><div class="line"></div><div class="step"></div></div>
+  <div class="wf-flex">
+    <div class="wf-box" style="width: 160px; flex-shrink: 0;">
+      <div class="wf-row"><div class="wf-avatar" style="width: 28px; height: 28px;"></div><div class="wf-col" style="gap: 3px;"><div class="wf-text" style="width: 70px;"></div><div class="wf-text-sm wf-text" style="width: 50px;"></div></div></div>
+      <div style="border-top: 1px solid #e2e5ea; margin: 6px 0; padding-top: 6px;">
+        <div class="wf-row"><div class="wf-text-sm wf-text" style="width: 20px;"></div><div class="wf-text-sm wf-text" style="width: 40px;"></div></div>
+        <div class="wf-row"><div class="wf-text-sm wf-text" style="width: 25px;"></div><div class="wf-text-sm wf-text" style="width: 35px;"></div></div>
+        <div class="wf-row"><div class="wf-text-sm wf-text" style="width: 20px;"></div><div class="wf-text-sm wf-text" style="width: 30px;"></div></div>
+      </div>
+    </div>
+    <div style="flex: 1;" class="wf-col">
+      <div class="wf-box">
+        <div class="wf-label">ข้อมูลการวินิจฉัย</div>
+        <div class="wf-grid wf-grid-2" style="margin-top: 4px;">
+          <div><div style="font-size: 8px; color: #aaa;">Diagnosis</div><div class="wf-input"></div></div>
+          <div><div style="font-size: 8px; color: #aaa;">ICD-10</div><div class="wf-input"></div></div>
+        </div>
+        <div style="margin-top: 6px;"><div style="font-size: 8px; color: #aaa;">Stage</div>
+          <div class="wf-row" style="margin-top: 3px;">
+            <div class="wf-pill" style="font-size: 8px;">I</div><div class="wf-pill-gray wf-pill" style="font-size: 8px;">II</div><div class="wf-pill-gray wf-pill" style="font-size: 8px;">III</div><div class="wf-pill-gray wf-pill" style="font-size: 8px;">IV</div>
+          </div>
+        </div>
+        <div style="margin-top: 6px;"><div style="font-size: 8px; color: #aaa;">TNM Staging</div>
+          <div class="wf-grid wf-grid-3" style="margin-top: 3px;">
+            <div class="wf-box" style="padding: 4px; text-align: center;"><div style="font-size: 10px; font-weight: 800; color: var(--purple);">T</div><div class="wf-row" style="justify-content: center; margin: 2px 0 0;"><div class="wf-pill" style="font-size: 7px;">0</div><div class="wf-pill-gray wf-pill" style="font-size: 7px;">1</div><div class="wf-pill-gray wf-pill" style="font-size: 7px;">2</div></div></div>
+            <div class="wf-box" style="padding: 4px; text-align: center;"><div style="font-size: 10px; font-weight: 800; color: var(--purple);">N</div><div class="wf-row" style="justify-content: center; margin: 2px 0 0;"><div class="wf-pill" style="font-size: 7px;">0</div><div class="wf-pill-gray wf-pill" style="font-size: 7px;">1</div></div></div>
+            <div class="wf-box" style="padding: 4px; text-align: center;"><div style="font-size: 10px; font-weight: 800; color: var(--purple);">M</div><div class="wf-row" style="justify-content: center; margin: 2px 0 0;"><div class="wf-pill" style="font-size: 7px;">0</div><div class="wf-pill-gray wf-pill" style="font-size: 7px;">1</div></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<h3 id="page-order">4.4 สั่งยาเคมีบำบัด (5-Step Wizard)</h3>
+<div class="card">
+  <p><strong>Role</strong>: ONC_DOCTOR — เข้าจาก Patient Summary → Tab "สั่งยาเคมีบำบัด"</p>
+  <table>
+    <tr><th>Step</th><th>ชื่อ</th><th>รายละเอียด</th><th>ข้อมูลที่ได้</th></tr>
+    <tr><td>1</td><td>ประเมิน ECOG</td><td>เลือก ECOG Performance Status 0-4 พร้อมคำอธิบายแต่ละระดับ</td><td>ECOG Score</td></tr>
+    <tr><td>2</td><td>เลือก Protocol</td><td>กรองตามชนิดมะเร็ง → เลือก Protocol Card (แสดง Cycles, Schedule, Emeto Risk)</td><td>Protocol + Drug List</td></tr>
+    <tr><td>3</td><td>คำนวณขนาดยา</td><td>ระบบคำนวณจาก BSA/AUC/Weight อัตโนมัติ → แก้ไข Final Dose ด้วย Number Stepper → ปรับ Dose Reduction %</td><td>Final Dose ทุกตัว</td></tr>
+    <tr><td>4</td><td>กำหนดการให้ยา</td><td>DatePicker เลือกวันนัด → เลือก Cycle → กรอก Clinical Notes</td><td>Appointment + Notes</td></tr>
+    <tr><td>5</td><td>ตรวจสอบ + ลงนาม</td><td>Preview เอกสาร A4 (พิมพ์ได้) → กดลงนาม → PIN 6 หลัก → Generation Animation → ✅ Toast</td><td>Order ID (CHEMO-xxx)</td></tr>
+  </table>
+</div>
+<!-- Wireframe: Order Entry -->
+<div class="wireframe">
+  <div class="wf-label">Order Entry — 5-Step Wizard (embedded ใน Patient Summary)</div>
+  <div class="wf-flex">
+    <div style="width: 140px; flex-shrink: 0;" class="wf-col">
+      <div class="wf-box">
+        <div class="wf-row"><div class="wf-avatar" style="width: 28px; height: 28px;"></div><div class="wf-col" style="gap: 2px;"><div class="wf-text" style="width: 60px;"></div><div class="wf-text-sm wf-text" style="width: 40px;"></div></div></div>
+        <div style="border-top: 1px solid #e2e5ea; margin: 6px 0; padding-top: 6px;">
+          <div class="wf-row"><div class="wf-text-sm wf-text" style="width: 20px;"></div><div class="wf-text-sm wf-text" style="width: 40px;"></div></div>
+          <div class="wf-row"><div class="wf-text-sm wf-text" style="width: 20px;"></div><div class="wf-text-sm wf-text" style="width: 30px;"></div></div>
+        </div>
+      </div>
+    </div>
+    <div style="flex: 1;" class="wf-col">
+      <div class="wf-box">
+        <div class="wf-stepper">
+          <div class="step"></div><div class="line"></div>
+          <div class="step"></div><div class="line"></div>
+          <div class="step"></div><div class="line-gray line"></div>
+          <div class="step-gray step"></div><div class="line-gray line"></div>
+          <div class="step-gray step"></div>
+        </div>
+        <div class="wf-row" style="justify-content: space-between;">
+          <div><div style="font-size: 10px; font-weight: 700;">คำนวณขนาดยา</div><div style="font-size: 9px; color: #aaa;">ตรวจสอบและปรับขนาดยา</div></div>
+          <div class="wf-row"><div class="wf-btn-ghost" style="width: 50px; height: 18px; border-radius: 12px;"></div><div class="wf-btn" style="width: 40px; height: 18px;"></div></div>
+        </div>
+        <div style="margin-top: 8px;">
+          <div class="wf-box" style="padding: 6px;">
+            <div class="wf-table-row" style="font-size: 8px; color: #aaa; font-weight: 600;"><div>ยา</div><div>สูตร</div><div>ขนาดคำนวณ</div><div>ขนาดจริง</div><div>Route</div></div>
+            <div class="wf-table-row"><div style="font-size: 9px; font-weight: 600;">Cyclophosphamide</div><div style="font-size: 8px;"><span class="wf-pill" style="font-size: 7px;">BSA</span></div><div style="font-size: 9px;">700 mg</div><div><div style="display: inline-flex; border: 1px solid #e2e5ea; border-radius: 4px; padding: 1px 4px; font-size: 9px; font-weight: 700;">700</div></div><div style="font-size: 9px;">IV Infusion</div></div>
+            <div class="wf-table-row"><div style="font-size: 9px; font-weight: 600;">Doxorubicin</div><div style="font-size: 8px;"><span class="wf-pill" style="font-size: 7px;">BSA</span></div><div style="font-size: 9px;">70 mg</div><div><div style="display: inline-flex; border: 1px solid #e2e5ea; border-radius: 4px; padding: 1px 4px; font-size: 9px; font-weight: 700;">70</div></div><div style="font-size: 9px;">IV Push</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<h3 id="page-pharm">4.4.1 ตรวจสอบ/เตรียมยา (Pharmacist)</h3>
+<div class="card">
+  <p><strong>Role</strong>: ONC_PHARMACIST — เข้าจาก Sidebar "สูตรยาเคมีบำบัด" หรือ Patient Summary → Tab "ตรวจสอบ/เตรียมยา"</p>
+  <table>
+    <tr><th>Step</th><th>ชื่อ</th><th>รายละเอียด</th></tr>
+    <tr><td>1</td><td>เตรียมยา</td><td>ตรวจสอบ Lab Safety (ANC, PLT, Cr) → ตรวจสอบ Dose → <strong>อนุมัติ</strong>: กรอก Lot/Expiry/ปริมาณ/ยาเหลือทิ้ง → ลงนาม PIN<br><strong>ปฏิเสธ</strong>: กรอกเหตุผล → ลงนาม PIN</td></tr>
+    <tr><td>2</td><td>ยาพร้อม</td><td>แสดง QR Sticker สำหรับติดถุงยา → กดพิมพ์ (Label format, centered)</td></tr>
+  </table>
+  <div class="info">เมื่อเภสัชกรลงนามเตรียมยาเสร็จ ระบบจะ: สร้าง Billing Record อัตโนมัติ + ส่ง Notification ไป Nurse และ Doctor</div>
+</div>
+<!-- Wireframe: PharmVerify -->
+<div class="wireframe">
+  <div class="wf-label">Pharmacist Verify — 2-Step</div>
+  <div class="wf-flex">
+    <div style="width: 140px; flex-shrink: 0;" class="wf-col">
+      <div class="wf-box" style="padding: 6px;">
+        <div style="font-size: 9px; font-weight: 700; margin-bottom: 4px;">รายการคำสั่งยา</div>
+        <div class="wf-box" style="padding: 4px; border-left: 3px solid var(--purple);">
+          <div class="wf-text" style="width: 60px;"></div>
+          <div class="wf-text-sm wf-text" style="width: 80px; margin-top: 2px;"></div>
+          <div class="wf-row" style="margin-top: 3px;"><span class="wf-pill-amber wf-pill" style="font-size: 7px;">รอตรวจสอบ</span></div>
+        </div>
+        <div class="wf-box" style="padding: 4px; margin-top: 3px;">
+          <div class="wf-text" style="width: 50px;"></div>
+          <div class="wf-text-sm wf-text" style="width: 70px; margin-top: 2px;"></div>
+        </div>
+      </div>
+    </div>
+    <div style="flex: 1;" class="wf-col">
+      <div class="wf-box">
+        <div class="wf-stepper"><div class="step"></div><div class="line"></div><div class="step-gray step"></div></div>
+        <div class="wf-row" style="justify-content: space-between;">
+          <div><div style="font-size: 10px; font-weight: 700;">เตรียมยา</div></div>
+          <div class="wf-row"><div class="wf-btn" style="width: 60px; height: 16px; background: #ef4444;"></div><div class="wf-btn" style="width: 60px; height: 16px;"></div></div>
+        </div>
+      </div>
+      <div class="wf-flex" style="margin-top: 4px;">
+        <div style="flex: 1;">
+          <div class="wf-box" style="padding: 6px;">
+            <div style="font-size: 9px; font-weight: 700; margin-bottom: 4px;">รายการยา</div>
+            <div class="wf-table-row" style="font-size: 8px;"><div style="font-weight: 600;">Oxaliplatin</div><div>144mg</div><div>IV Infusion</div></div>
+            <div class="wf-table-row" style="font-size: 8px;"><div style="font-weight: 600;">Leucovorin</div><div>340mg</div><div>IV Infusion</div></div>
+          </div>
+        </div>
+        <div style="width: 120px; flex-shrink: 0;">
+          <div class="wf-box" style="padding: 6px;">
+            <div style="font-size: 9px; font-weight: 700; margin-bottom: 4px;">เตรียมยา</div>
+            <div style="font-size: 8px; color: #aaa;">Lot No.</div><div class="wf-input" style="height: 14px; margin-bottom: 3px;"></div>
+            <div style="font-size: 8px; color: #aaa;">Expiry</div><div class="wf-input" style="height: 14px; margin-bottom: 3px;"></div>
+            <div class="wf-flex">
+              <div style="flex: 1;"><div style="font-size: 8px; color: #aaa;">ปริมาณ</div><div class="wf-input" style="height: 14px;"></div></div>
+              <div style="flex: 1;"><div style="font-size: 8px; color: #aaa;">เหลือทิ้ง</div><div class="wf-input" style="height: 14px;"></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<h3 id="page-regimen">4.5 สูตรยาเคมีบำบัด (Regimen Master)</h3>
+<div class="card">
+  <p><strong>List View</strong>: Banner + Stat Cards + ตาราง Protocol ทั้งหมด</p>
+  <p><strong>Detail View</strong>: 2-column layout</p>
+  <ul style="font-size: 13px; padding-left: 20px; margin-bottom: 12px;">
+    <li>ซ้าย: เกี่ยวกับ Protocol, Stats 2×2, หมายเหตุ, ประวัติเวอร์ชัน</li>
+    <li>ขวา: Day Tabs + Drug Cards (view) / Inline Table (edit)</li>
+    <li>Edit Mode: Inline editable table, เพิ่ม/ลบยา, เพิ่ม Day, Validation Toast + Confirmation Modal</li>
+  </ul>
+</div>
+<!-- Wireframe: Regimen Detail -->
+<div class="wireframe">
+  <div class="wf-label">Detail View — 2-column layout</div>
+  <div class="wf-box-purple" style="padding: 10px; margin-bottom: 8px; border-radius: 12px; position: relative;">
+    <div class="wf-text" style="width: 120px; background: var(--purple); opacity: 0.3;"></div>
+    <div class="wf-bar" style="width: 60px; height: 16px; background: var(--purple); opacity: 0.5; margin-top: 4px; border-radius: 4px;"></div>
+    <div class="wf-row" style="margin-top: 6px;">
+      <span class="wf-pill" style="font-size: 8px; background: #3b82f6;">เสริม</span>
+      <span class="wf-pill" style="font-size: 8px; background: #ef4444;">สูง</span>
+      <span class="wf-pill-green wf-pill" style="font-size: 8px;">Active</span>
+      <span class="wf-pill-gray wf-pill" style="font-size: 8px;">v3</span>
+    </div>
+    <div style="position: absolute; top: 6px; right: 8px; display: flex; flex-direction: column; gap: 3px;">
+      <div class="wf-btn" style="width: 50px; height: 14px;"></div>
+      <div class="wf-btn-ghost" style="width: 50px; height: 14px; border-radius: 8px;"></div>
+    </div>
+  </div>
+  <div class="wf-flex">
+    <div style="width: 140px; flex-shrink: 0;" class="wf-col">
+      <div class="wf-box"><div class="wf-label">เกี่ยวกับ Protocol</div><div class="wf-text" style="width: 80%;"></div><div class="wf-text" style="width: 60%; margin-top: 3px;"></div><div class="wf-text" style="width: 70%; margin-top: 3px;"></div></div>
+      <div class="wf-grid wf-grid-2">
+        <div class="wf-box" style="text-align: center; padding: 4px;"><div style="font-size: 14px; font-weight: 800; color: var(--purple);">5</div><div style="font-size: 8px; color: #aaa;">ยาทั้งหมด</div></div>
+        <div class="wf-box" style="text-align: center; padding: 4px;"><div style="font-size: 14px; font-weight: 800; color: #3b82f6;">2</div><div style="font-size: 8px; color: #aaa;">Premed</div></div>
+      </div>
+      <div class="wf-box"><div class="wf-label">ประวัติเวอร์ชัน</div>
+        <div class="wf-row"><div class="wf-dot"></div><div class="wf-col" style="gap: 2px;"><div class="wf-text" style="width: 30px;"></div><div class="wf-text-sm wf-text" style="width: 60px;"></div></div></div>
+        <div class="wf-row"><div class="wf-dot" style="background: #d1d5db;"></div><div class="wf-col" style="gap: 2px;"><div class="wf-text" style="width: 30px;"></div><div class="wf-text-sm wf-text" style="width: 60px;"></div></div></div>
+      </div>
+    </div>
+    <div style="flex: 1;" class="wf-col">
+      <div class="wf-box">
+        <div class="wf-row" style="border-bottom: 2px solid var(--purple-light); padding-bottom: 4px;">
+          <span class="wf-pill" style="font-size: 9px;">Day 1 (5)</span>
+          <span class="wf-pill-gray wf-pill" style="font-size: 9px;">Day 8 (1)</span>
+          <div style="flex: 1;"></div>
+          <div class="wf-btn" style="width: 40px; height: 14px;"></div>
+        </div>
+        <div style="margin-top: 6px;">
+          <div class="wf-box" style="padding: 4px; display: flex; align-items: center; gap: 6px;">
+            <span class="wf-pill" style="font-size: 7px; background: #3b82f6;">Premed</span>
+            <div class="wf-text" style="width: 80px;"></div>
+            <div style="flex: 1;"></div>
+            <div class="wf-text" style="width: 30px;"></div>
+            <div class="wf-text" style="width: 20px;"></div>
+          </div>
+          <div class="wf-box" style="padding: 4px; display: flex; align-items: center; gap: 6px; margin-top: 3px;">
+            <span class="wf-pill" style="font-size: 7px;">Chemo</span>
+            <div class="wf-text" style="width: 80px;"></div>
+            <div style="flex: 1;"></div>
+            <div class="wf-text" style="width: 30px;"></div>
+            <div class="wf-text" style="width: 20px;"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<h3 id="page-billing">4.6 ค่าใช้จ่าย (Billing)</h3>
+<div class="card">
+  <p><strong>List View</strong>: Banner + Stats (ทั้งหมด, รอตรวจสอบ, ออกใบแจ้งหนี้, รายได้รวม) + ตาราง</p>
+  <p><strong>Detail View</strong>: 2-column — ซ้าย (สรุป + สิทธิ + ดำเนินการ) / ขวา (ตารางรายการ)</p>
+  <p>กด <strong>"ยืนยันและออกใบแจ้งหนี้"</strong> → PIN → ✅ Toast + พิมพ์ A4 Invoice อัตโนมัติ</p>
+</div>
+<!-- Wireframe: Billing Detail -->
+<div class="wireframe">
+  <div class="wf-label">Detail View — Billing</div>
+  <div class="wf-box" style="padding: 8px; margin-bottom: 8px;">
+    <div class="wf-row">
+      <div class="wf-avatar" style="width: 28px; height: 28px;"></div>
+      <div class="wf-col" style="gap: 2px; flex: 1;"><div class="wf-text" style="width: 100px;"></div><div class="wf-text-sm wf-text" style="width: 160px;"></div></div>
+      <span class="wf-pill-amber wf-pill" style="font-size: 8px;">รอตรวจสอบ</span>
+      <span class="wf-pill" style="font-size: 8px; background: #3b82f6;">UC</span>
+    </div>
+  </div>
+  <div class="wf-flex">
+    <div style="width: 140px; flex-shrink: 0;" class="wf-col">
+      <div class="wf-box"><div class="wf-label">สรุปค่าใช้จ่าย</div>
+        <div class="wf-row"><div class="wf-text-sm wf-text" style="width: 30px;"></div><div style="flex:1;"></div><div class="wf-text-sm wf-text" style="width: 40px;"></div></div>
+        <div class="wf-row"><div class="wf-text-sm wf-text" style="width: 35px;"></div><div style="flex:1;"></div><div class="wf-text-sm wf-text" style="width: 30px;"></div></div>
+        <div style="border-top: 1px solid #e2e5ea; margin-top: 4px; padding-top: 4px;">
+          <div class="wf-row"><div style="font-size: 9px; font-weight: 700; color: var(--text);">รวม</div><div style="flex:1;"></div><div style="font-size: 11px; font-weight: 800; color: var(--purple);">฿18,405</div></div>
+        </div>
+      </div>
+      <div class="wf-btn" style="height: 24px; border-radius: 8px;"></div>
+      <div class="wf-btn-ghost" style="height: 24px; border-radius: 8px;"></div>
+    </div>
+    <div style="flex: 1;">
+      <div class="wf-box" style="padding: 6px;">
+        <div class="wf-label">รายการค่าใช้จ่าย</div>
+        <div class="wf-table-row" style="font-size: 8px; color: #aaa; font-weight: 600;"><div>รหัส</div><div>ประเภท</div><div style="flex: 2;">รายการ</div><div>ราคา</div></div>
+        <div class="wf-table-row"><div class="wf-text" style="width: 30px;"></div><div style="font-size: 8px;">💊 ยา</div><div style="flex: 2;" class="wf-text" ></div><div class="wf-text" style="width: 35px;"></div></div>
+        <div class="wf-table-row"><div class="wf-text" style="width: 30px;"></div><div style="font-size: 8px;">💊 ยา</div><div style="flex: 2;" class="wf-text" ></div><div class="wf-text" style="width: 35px;"></div></div>
+        <div class="wf-table-row"><div class="wf-text" style="width: 30px;"></div><div style="font-size: 8px;">🧪 สารละลาย</div><div style="flex: 2;" class="wf-text" ></div><div class="wf-text" style="width: 25px;"></div></div>
+        <div class="wf-table-row" style="background: #f9fafb; font-weight: 700;"><div></div><div></div><div style="flex: 2; text-align: right; font-size: 9px;">รวมทั้งสิ้น</div><div style="font-size: 10px; color: var(--purple); font-weight: 800;">฿18,405</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ 5. Data Flow ═══ -->
+<h2 id="dataflow">Data Flow สำหรับ Developer</h2>
+
+<h3>5.1 Global State (OncContext)</h3>
+
+<pre><span class="kw">interface</span> <span class="ty">OncContextType</span> {
+  <span class="cm">// Auth</span>
+  role: <span class="ty">OncRole</span>;
+  <span class="fn">setRole</span>(r: OncRole): <span class="kw">void</span>;
+  <span class="fn">verifyPin</span>(pin: <span class="ty">string</span>): <span class="ty">boolean</span>;  <span class="cm">// accepts "1234" or "123456"</span>
+
+  <span class="cm">// Order History</span>
+  orderHistory: <span class="ty">OrderHistoryEntry</span>[];
+  <span class="fn">addOrderHistory</span>(entry): <span class="kw">void</span>;
+
+  <span class="cm">// Notifications</span>
+  notifications: <span class="ty">OncNotification</span>[];
+  <span class="fn">addNotification</span>(n): <span class="kw">void</span>;
+  <span class="fn">markNotificationRead</span>(id): <span class="kw">void</span>;
+  unreadCount: <span class="ty">number</span>;
+
+  <span class="cm">// Billing</span>
+  billingRecords: <span class="ty">BillingRecord</span>[];
+  <span class="fn">addBillingRecord</span>(r): <span class="kw">void</span>;
+  <span class="fn">updateBillingStatus</span>(id, status, confirmedBy?): <span class="kw">void</span>;
+}</pre>
+
+<h3>5.2 Notification Flow</h3>
+
+<div class="flow-diagram">
+  <div class="flow-row">
+    <div class="flow-box">Doctor สั่งยา</div>
+    <span class="flow-arrow">→</span>
+    <div class="flow-box-amber">Notification → PHARMACIST</div>
+  </div>
+  <div class="flow-row" style="margin-left: 40px; margin-top: 12px;">
+    <span class="flow-arrow">├</span>
+    <div class="flow-box-green">อนุมัติ → Notification → NURSE + สร้าง Billing → BILLING_OFFICER</div>
+  </div>
+  <div class="flow-row" style="margin-left: 40px;">
+    <span class="flow-arrow">└</span>
+    <div class="flow-box-red">ปฏิเสธ → Notification → DOCTOR (กลับแก้ไข)</div>
+  </div>
+</div>
+
+<h3>5.3 Billing Auto-Generation</h3>
+<pre><span class="cm">// เมื่อเภสัชกรลงนามเตรียมยาเสร็จ (PharmVerify.tsx)</span>
+
+<span class="cm">// 1. คำนวณราคายาจาก DRUG_PRICES lookup</span>
+<span class="kw">const</span> drugItems = chemoDrugs.<span class="fn">map</span>(d => ({
+  code: <span class="str">`DRG-${idx}`</span>,
+  description: <span class="str">`${d.name} ${d.finalDose}mg`</span>,
+  unitPrice: <span class="ty">DRUG_PRICES</span>[d.name],
+}));
+
+<span class="cm">// 2. รวม SERVICE_ITEMS (ผสมยา 1,500฿ + ให้ยา 800฿ + พยาบาล 1,200฿)</span>
+<span class="kw">const</span> items = [...drugItems, ...diluentItems, ...<span class="ty">SERVICE_ITEMS</span>];
+
+<span class="cm">// 3. สร้าง BillingRecord → status: "PENDING"</span>
+<span class="fn">addBillingRecord</span>({ id, items, totalAmount, status: <span class="str">"PENDING"</span> });
+
+<span class="cm">// 4. แจ้ง BILLING_OFFICER</span>
+<span class="fn">addNotification</span>({ type: <span class="str">"billing"</span>, targetRole: <span class="str">"BILLING_OFFICER"</span> });</pre>
+
+<h3>5.4 Key Data Types</h3>
+
+<pre><span class="kw">interface</span> <span class="ty">Patient</span> {
+  hn: <span class="ty">string</span>;            <span class="cm">// Hospital Number</span>
+  name: <span class="ty">string</span>;
+  diagnosis: <span class="ty">string</span>;     <span class="cm">// "Breast Cancer"</span>
+  icd10: <span class="ty">string</span>;         <span class="cm">// "C50.9"</span>
+  stage: <span class="ty">string</span>;         <span class="cm">// "IIIA"</span>
+  t, n, m: <span class="ty">string</span>;       <span class="cm">// TNM staging</span>
+  ecog: <span class="ty">number</span>;          <span class="cm">// 0-4</span>
+  weight, height: <span class="ty">number</span>;
+  bsa: <span class="ty">number</span>;           <span class="cm">// Body Surface Area (m²)</span>
+  crcl: <span class="ty">number</span>;          <span class="cm">// Creatinine Clearance</span>
+  regimen: <span class="ty">string</span>;       <span class="cm">// "CAF"</span>
+}
+
+<span class="kw">interface</span> <span class="ty">BillingRecord</span> {
+  id: <span class="ty">string</span>;            <span class="cm">// "BIL-001"</span>
+  status: <span class="str">"PENDING"</span> | <span class="str">"INVOICED"</span>;
+  items: <span class="ty">BillingItem</span>[];
+  totalAmount: <span class="ty">number</span>;
+  coverageType: <span class="str">"UC"</span> | <span class="str">"SSO"</span> | <span class="str">"GOV"</span> | <span class="str">"CASH"</span> | <span class="str">"INS"</span>;
+}
+
+<span class="kw">interface</span> <span class="ty">OncNotification</span> {
+  type: <span class="str">"rejection"</span> | <span class="str">"approval"</span> | <span class="str">"prepared"</span> | <span class="str">"billing"</span>;
+  targetRole: <span class="ty">OncRole</span>;   <span class="cm">// ใครเห็น</span>
+  hn?: <span class="ty">string</span>;           <span class="cm">// link ไปหน้าผู้ป่วย</span>
+}</pre>
+
+<!-- ═══ 6. Structure ═══ -->
+<h2 id="structure">โครงสร้างโค้ด</h2>
+
+<div class="tree">
+<span class="folder">app/src/</span><br>
+├── <span class="file">main.tsx</span> <span class="comment">— Routes, RoleGuard, Providers</span><br>
+├── <span class="file">index.css</span> <span class="comment">— Tailwind, Print CSS, Animations</span><br>
+│<br>
+├── <span class="folder">components/onc/</span><br>
+│&nbsp;&nbsp; ├── <span class="file">OncContext.tsx</span> <span class="comment">— Global State (roles, orders, notifications, billing)</span><br>
+│&nbsp;&nbsp; ├── <span class="file">OncLayout.tsx</span> <span class="comment">— Sidebar + Notification Panel</span><br>
+│&nbsp;&nbsp; ├── <span class="file">PatientAvatar.tsx</span> <span class="comment">— Avatar (color from HN hash)</span><br>
+│&nbsp;&nbsp; ├── <span class="file">CancerProfileBanner.tsx</span> <span class="comment">— Purple cancer info banner</span><br>
+│&nbsp;&nbsp; ├── <span class="file">ProtocolCard.tsx</span> <span class="comment">— Protocol selection card</span><br>
+│&nbsp;&nbsp; ├── <span class="file">LabSafetyPanel.tsx</span> <span class="comment">— Lab safety check</span><br>
+│&nbsp;&nbsp; ├── <span class="file">TreatmentHistory.tsx</span> <span class="comment">— Treatment timeline</span><br>
+│&nbsp;&nbsp; └── <span class="file">Toast.tsx</span> <span class="comment">— Toast notifications</span><br>
+│<br>
+├── <span class="folder">pages/onc/</span><br>
+│&nbsp;&nbsp; ├── <span class="file">Login.tsx</span> <span class="comment">— Login (split layout + hero animation)</span><br>
+│&nbsp;&nbsp; ├── <span class="file">Overview.tsx</span> <span class="comment">— Home / Dashboard</span><br>
+│&nbsp;&nbsp; ├── <span class="file">PatientRegister.tsx</span> <span class="comment">— 2-step registration</span><br>
+│&nbsp;&nbsp; ├── <span class="file">PatientSummary.tsx</span> <span class="comment">— Patient detail (tabs)</span><br>
+│&nbsp;&nbsp; ├── <span class="file">OrderEntry.tsx</span> <span class="comment">— 5-step order wizard</span><br>
+│&nbsp;&nbsp; ├── <span class="file">PharmVerify.tsx</span> <span class="comment">— Pharmacist verify + compounding + QR sticker</span><br>
+│&nbsp;&nbsp; ├── <span class="file">Administration.tsx</span> <span class="comment">— Nurse drug administration (full screen)</span><br>
+│&nbsp;&nbsp; ├── <span class="file">RegimenMaster.tsx</span> <span class="comment">— Protocol template builder</span><br>
+│&nbsp;&nbsp; └── <span class="file">Billing.tsx</span> <span class="comment">— Billing & invoicing</span><br>
+│<br>
+└── <span class="folder">public/onc/</span> <span class="comment">— Static assets (SVGs, PNGs, avatars)</span>
+</div>
+
+<h3>Route Structure</h3>
+<table>
+  <tr><th>Route</th><th>Component</th><th>Role Guard</th></tr>
+  <tr><td><code>/onc/login</code></td><td>Login</td><td>—</td></tr>
+  <tr><td><code>/onc</code></td><td>Overview</td><td>All</td></tr>
+  <tr><td><code>/onc/register</code></td><td>PatientRegister</td><td><span class="badge badge-blue">Doctor</span></td></tr>
+  <tr><td><code>/onc/patients/:hn</code></td><td>PatientSummary</td><td>All</td></tr>
+  <tr><td><code>/onc/order-entry</code></td><td>OrderEntry</td><td><span class="badge badge-blue">Doctor</span></td></tr>
+  <tr><td><code>/onc/pharm-verify</code></td><td>PharmVerify</td><td><span class="badge badge-purple">Pharmacist</span></td></tr>
+  <tr><td><code>/onc/administration</code></td><td>Administration</td><td><span class="badge badge-green">Nurse</span> <span class="badge badge-blue">Doctor</span></td></tr>
+  <tr><td><code>/onc/regimen</code></td><td>RegimenMaster</td><td><span class="badge badge-purple">Pharmacist</span></td></tr>
+  <tr><td><code>/onc/billing</code></td><td>Billing</td><td><span class="badge badge-indigo">Billing</span> <span class="badge badge-gray">Admin</span></td></tr>
+  <tr><td><code>/onc/settings</code></td><td>Placeholder</td><td><span class="badge badge-gray">Admin</span></td></tr>
+</table>
+
+<!-- ═══ 7. Mock Data ═══ -->
+<h2 id="mockdata">Mock Data</h2>
+
+<h3>ผู้ป่วยตัวอย่าง</h3>
+<table>
+  <tr><th>HN</th><th>ชื่อ</th><th>Diagnosis</th><th>Regimen</th><th>Cycle</th></tr>
+  <tr><td><code>104365</code></td><td>นางคำปุ่น เสนาหอย</td><td>Breast Cancer</td><td>CAF</td><td>C2/6</td></tr>
+  <tr><td><code>205471</code></td><td>นายบุญมี ดีใจ</td><td>Colorectal Cancer</td><td>FOLFOX6</td><td>C5/12</td></tr>
+  <tr><td><code>308892</code></td><td>นางเพ็ญ ใจสว่าง</td><td>Ovarian Cancer</td><td>CARBO-PAC</td><td>C1/6</td></tr>
+  <tr><td><code>412230</code></td><td>นายสมศักดิ์ ชัยมงคล</td><td>Lung Cancer</td><td>GEM</td><td>C4/6</td></tr>
+  <tr><td><code>519087</code></td><td>นางสาวมาลี สุขใจ</td><td>Breast Cancer</td><td>AC-T</td><td>C3/8</td></tr>
+  <tr><td><code>620145</code></td><td>นายอุดม พัฒนา</td><td>Lymphoma</td><td>R-CHOP</td><td>C2/6</td></tr>
+</table>
+
+<h3>ผู้ป่วยลงทะเบียนใหม่ (HOSxP Mock)</h3>
+<table>
+  <tr><th>HN</th><th>ชื่อ</th><th>สิทธิ</th></tr>
+  <tr><td><code>550123</code></td><td>นางสมศรี รักสุข</td><td>UC — สิทธิบัตรทอง</td></tr>
+  <tr><td><code>660234</code></td><td>นายวิชัย มั่นคง</td><td>ประกันสังคม</td></tr>
+  <tr><td><code>770345</code></td><td>นางสาวพิมพ์ใจ แสงทอง</td><td>ข้าราชการ</td></tr>
+</table>
+
+<h3>Protocol Templates</h3>
+<table>
+  <tr><th>Code</th><th>Cancer</th><th>Drugs</th><th>Cycle</th></tr>
+  <tr><td><span class="badge badge-purple">CAF</span></td><td>Breast</td><td>Cyclophosphamide + Doxorubicin + 5-FU</td><td>q21d × 6</td></tr>
+  <tr><td><span class="badge badge-purple">FOLFOX6</span></td><td>Colorectal</td><td>Oxaliplatin + Leucovorin + 5-FU</td><td>q14d × 12</td></tr>
+  <tr><td><span class="badge badge-purple">GEM</span></td><td>Lung/Pancreas</td><td>Gemcitabine</td><td>q28d × 6 (D1,8,15)</td></tr>
+  <tr><td><span class="badge badge-purple">CARBO-PAC</span></td><td>Ovarian/NSCLC</td><td>Carboplatin + Paclitaxel</td><td>q21d × 6</td></tr>
+  <tr><td><span class="badge badge-purple">R-CHOP</span></td><td>DLBCL/NHL</td><td>Rituximab + CHOP</td><td>q21d × 6</td></tr>
+</table>
+
+<h3>ราคายา</h3>
+<table>
+  <tr><th>ยา</th><th>ราคา (฿)</th><th>ยา</th><th>ราคา (฿)</th></tr>
+  <tr><td>Cyclophosphamide</td><td>850</td><td>Oxaliplatin</td><td>12,500</td></tr>
+  <tr><td>Doxorubicin</td><td>4,200</td><td>Paclitaxel</td><td>8,900</td></tr>
+  <tr><td>5-FU</td><td>320</td><td>Carboplatin</td><td>5,200</td></tr>
+  <tr><td>Gemcitabine</td><td>3,500</td><td>Rituximab</td><td>28,000</td></tr>
+</table>
+
+<h3 id="tech">ค่าบริการคงที่</h3>
+<table>
+  <tr><th>รหัส</th><th>รายการ</th><th>ราคา (฿)</th></tr>
+  <tr><td><code>SVC-001</code></td><td>ค่าผสมยาเคมีบำบัด</td><td>1,500</td></tr>
+  <tr><td><code>SVC-002</code></td><td>ค่าบริการให้ยาเคมีบำบัด (เก้าอี้/เตียง)</td><td>800</td></tr>
+  <tr><td><code>SVC-003</code></td><td>ค่าพยาบาลดูแลขณะให้ยา</td><td>1,200</td></tr>
+</table>
+
+<!-- ═══ Toast ═══ -->
+<h2 id="toast">Toast Notifications</h2>
+
+<p>ระบบแสดง Toast (แจ้งเตือนมุมขวาล่าง) พร้อม Slide-in Animation สำหรับทุกการดำเนินการสำคัญ</p>
+
+<table>
+  <tr><th>ประเภท</th><th>สี</th><th>ตัวอย่าง</th></tr>
+  <tr><td><span class="badge badge-green">Success</span></td><td>เขียว</td><td>ลงทะเบียนสำเร็จ, บันทึก Protocol สำเร็จ, ออกใบแจ้งหนี้สำเร็จ, สร้างคำสั่งยาสำเร็จ, เตรียมยาเสร็จ</td></tr>
+  <tr><td><span class="badge badge-red">Error</span></td><td>แดง</td><td>กรุณากรอกชื่อยา, ขนาดยาต้องมากกว่า 0, ต้องมีเคมีบำบัดอย่างน้อย 1 ตัว</td></tr>
+  <tr><td><span class="badge badge-amber">Warning</span></td><td>เหลือง</td><td>ปฏิเสธคำสั่งยา</td></tr>
+</table>
+
+<div class="info">Toast หายไปอัตโนมัติหลัง 4 วินาที หรือกด ✕ เพื่อปิด — มี Slide-out Animation</div>
+
+<!-- ═══ Printing ═══ -->
+<h2 id="printing">การพิมพ์เอกสาร</h2>
+
+<table>
+  <tr><th>เอกสาร</th><th>หน้า</th><th>รูปแบบ</th></tr>
+  <tr><td>ใบสั่งยาเคมีบำบัด</td><td>Order Entry Step 5</td><td>A4 — ข้อมูลผู้ป่วย + ตารางยา + ลายเซ็น</td></tr>
+  <tr><td>สติกเกอร์ติดถุงยา</td><td>PharmVerify Step 2</td><td>Label — QR Code + ข้อมูลยา (centered, rounded)</td></tr>
+  <tr><td>ใบแจ้งค่าใช้จ่าย</td><td>Billing Detail</td><td>A4 — ตารางค่าใช้จ่าย + สรุป + ลายเซ็น 3 ช่อง</td></tr>
+</table>
+
+<!-- ═══ Coverage ═══ -->
+<h2 id="coverage">สิทธิการรักษา</h2>
+
+<table>
+  <tr><th>รหัส</th><th>ชื่อ</th><th>Badge</th></tr>
+  <tr><td><code>UC</code></td><td>สิทธิบัตรทอง</td><td><span class="badge badge-blue">UC</span></td></tr>
+  <tr><td><code>SSO</code></td><td>ประกันสังคม</td><td><span class="badge badge-green">SSO</span></td></tr>
+  <tr><td><code>GOV</code></td><td>ข้าราชการ</td><td><span class="badge badge-amber">GOV</span></td></tr>
+  <tr><td><code>CASH</code></td><td>เงินสด</td><td><span class="badge badge-gray">CASH</span></td></tr>
+  <tr><td><code>INS</code></td><td>ประกันเอกชน</td><td><span class="badge badge-purple">INS</span></td></tr>
+</table>
+
+<!-- ═══ Notes ═══ -->
+<h2 id="notes">หมายเหตุ</h2>
+
+<div class="info">
+  <strong>Prototype / Frontend MVP</strong><br>
+  • ไม่มี Backend หรือ Database — ข้อมูลเก็บใน React State<br>
+  • ข้อมูลจะหายเมื่อ Refresh หน้า<br>
+  • PIN Code สำหรับทุก Role: <code>123456</code><br>
+  • Deploy บน GitHub Pages
+</div>
+
+<div style="margin-top: 48px; padding: 20px; text-align: center; color: var(--muted); font-size: 12px; border-top: 1px solid #e5e7eb;">
+  HOSxP Oncology Chemo CPOE — Tutorial Document<br>
+  Generated April 2026 · Powered by BMS
+</div>
+
+</div>
+
+<script>
+// Active section tracking with Intersection Observer
+document.addEventListener('DOMContentLoaded', () => {
+  const navLinks = document.querySelectorAll('.sidebar a[data-nav]');
+  const sections = [];
+
+  navLinks.forEach(link => {
+    const id = link.getAttribute('href')?.replace('#', '');
+    if (id) {
+      const el = document.getElementById(id);
+      if (el) sections.push({ id, el, link });
+    }
+  });
+
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        navLinks.forEach(l => l.classList.remove('active'));
+        const match = sections.find(s => s.el === entry.target);
+        if (match) match.link.classList.add('active');
+      }
+    });
+  }, { rootMargin: '-20% 0px -60% 0px', threshold: 0 });
+
+  sections.forEach(s => observer.observe(s.el));
+
+  // Smooth scroll
+  navLinks.forEach(link => {
+    link.addEventListener('click', e => {
+      e.preventDefault();
+      const id = link.getAttribute('href')?.replace('#', '');
+      const el = id && document.getElementById(id);
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  });
+});
+</script>
+</body>
+</html>

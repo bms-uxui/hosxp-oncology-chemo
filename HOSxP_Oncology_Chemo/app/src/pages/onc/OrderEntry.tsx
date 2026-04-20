@@ -5,18 +5,19 @@ import {
   Pill, AlertOctagon, Info, Eye,
   Heart, Check, ClipboardCheck, Printer,
   Bike, PersonStanding, Armchair, BedDouble, Hospital,
-  Syringe, Calendar, ChevronUp, ChevronDown,
+  Syringe, Calendar, ChevronUp, ChevronDown, Download,
 } from "lucide-react";
-import { useOnc } from "../../components/onc/OncContext";
+import { useOnc, roleLabels } from "../../components/onc/OncContext";
 import { Tooltip as HeroTooltip, DatePicker } from "@heroui/react";
-import { parseDate } from "@internationalized/date";
-import type { DateValue } from "@internationalized/date";
+import { parseZonedDateTime, now, today, getLocalTimeZone } from "@internationalized/date";
+import type { ZonedDateTime } from "@internationalized/date";
 import { useNavigate } from "react-router";
 import PatientAvatar from "../../components/onc/PatientAvatar";
 import ProtocolCard from "../../components/onc/ProtocolCard";
 import LabSafetyPanel from "../../components/onc/LabSafetyPanel";
 import { Stepper as MuiStepper, Step, StepLabel, StepConnector, stepConnectorClasses } from "@mui/material";
 import { styled } from "@mui/material/styles";
+import { useToast } from "../../components/onc/Toast";
 
 /* ── MUI Qonto-style Stepper overrides ── */
 const QontoConnector = styled(StepConnector)({
@@ -223,18 +224,22 @@ function labStatus(lab: LabItem): "safe" | "warn" | "danger" {
 }
 
 const todayStr = new Date().toISOString().slice(0, 10);
+const tz = getLocalTimeZone();
+const defaultAppointDT = parseZonedDateTime(`${todayStr}T09:00:00[${tz}]`);
 
 const STEP_LABELS = [
   "ประเมิน ECOG",
   "เลือก Protocol",
   "คำนวณขนาดยา",
-  "ตรวจสอบ & Sign",
+  "กำหนดการให้ยา",
+  "ตรวจสอบ",
 ];
 
 const STEP_DESCRIPTIONS = [
   "ประเมินสมรรถภาพร่างกาย",
   "เลือกสูตรเคมีบำบัด",
   "ตรวจสอบและปรับขนาดยา",
+  "กำหนดวันนัดและบันทึก",
   "ตรวจสอบและลงนามคำสั่งยา",
 ];
 
@@ -286,8 +291,9 @@ export function OrderStepper({ step, onStepClick }: { step: number; onStepClick?
 
 /* ══════════════════════════════════════════════ */
 export default function OrderEntry({ embedded = false, patientHN, onStepChange, controlledStep, navRef, onNavUpdate }: { embedded?: boolean; patientHN?: string; onStepChange?: (step: number) => void; controlledStep?: number; navRef?: React.MutableRefObject<{ next: () => void; back: () => void; canProceed: boolean; step: number } | null>; onNavUpdate?: () => void }) {
-  const { verifyPin, role } = useOnc();
+  const { verifyPin, role, addOrderHistory } = useOnc();
   const navigate = useNavigate();
+  const { toast } = useToast();
 
   const [step, setStepRaw] = useState(controlledStep ?? 1);
   const setStep = (s: number) => { setStepRaw(s); onStepChange?.(s); };
@@ -319,7 +325,7 @@ export default function OrderEntry({ embedded = false, patientHN, onStepChange, 
   const [gfrAUC, setGfrAUC] = useState(5);
 
   // Step 3: Review
-  const [appointDate, setAppointDate] = useState(todayStr);
+  const [appointDT, setAppointDT] = useState<ZonedDateTime>(defaultAppointDT);
   const [clinicalNote, setClinicalNote] = useState("");
   const [cycle, setCycle] = useState(1);
 
@@ -329,6 +335,8 @@ export default function OrderEntry({ embedded = false, patientHN, onStepChange, 
   const [pin, setPin] = useState("");
   const [pinError, setPinError] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [generating, setGenerating] = useState(false);
+  const [genStep, setGenStep] = useState(0);
   const [orderNo, setOrderNo] = useState("");
 
   const patient = patientList.find(p => p.hn === selectedHN);
@@ -412,12 +420,13 @@ export default function OrderEntry({ embedded = false, patientHN, onStepChange, 
       case 1: return true; // ECOG always valid
       case 2: return !!selProtoId;
       case 3: return orderLines.length > 0;
+      case 4: return !!appointDT;
       default: return true;
     }
   }
 
   function handleNext() {
-    if (step < 4 && canProceed()) setStep(step + 1);
+    if (step < 5 && canProceed()) setStep(step + 1);
   }
 
   // Expose nav actions to parent via ref
@@ -440,13 +449,44 @@ export default function OrderEntry({ embedded = false, patientHN, onStepChange, 
   }
 
   function handleSign() {
-    if (pin.length < 4) return;
+    if (pin.length < 6) return;
     if (verifyPin(pin)) {
       const no = generateOrderNo();
       setOrderNo(no);
-      setSubmitted(true);
       setShowSignModal(false);
       setPinError(false);
+      setGenerating(true);
+      setGenStep(0);
+
+      // Simulate document generation steps
+      const steps = [600, 800, 700, 900];
+      let i = 0;
+      const next = () => {
+        i++;
+        setGenStep(i);
+        if (i < steps.length) { setTimeout(next, steps[i]); }
+        else {
+          setTimeout(() => {
+            setGenerating(false);
+            setSubmitted(true);
+            toast("success", `สร้างคำสั่งยา ${no} สำเร็จ`);
+            if (patient && protocol) {
+              addOrderHistory({
+                orderNo: no,
+                hn: patient.hn,
+                patientName: patient.name,
+                date: new Date().toLocaleDateString("th-TH", { day: "2-digit", month: "2-digit", year: "numeric" }),
+                cycle: `C${cycle}D1`,
+                regimen: protocol.code,
+                doctor: "นพ.สมชาย รักษาดี",
+                drugs: orderLines.map(d => ({ name: d.name, dose: `${d.finalDose} ${d.unit}`, route: d.route, duration: d.rate })),
+                doseReduction,
+              });
+            }
+          }, 500);
+        }
+      };
+      setTimeout(next, steps[0]);
     } else {
       setPinError(true);
       setPin("");
@@ -456,37 +496,419 @@ export default function OrderEntry({ embedded = false, patientHN, onStepChange, 
   function handleReset() {
     setStep(1); setSelProtoId("");
     setOrderLines([]); setPin(""); setSubmitted(false); setDoseReduction(100);
-    setClinicalNote(""); setAppointDate(todayStr); setCycle(1);
+    setClinicalNote(""); setAppointDT(defaultAppointDT); setCycle(1);
   }
 
-  const inputCls = "border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:border-[#674BB3] focus:ring-1 focus:ring-[#674BB3] outline-none w-full";
-  const cardCls = "bg-white rounded-2xl border-[0.1px] border-[#d9d9d9]/25 p-5 shadow-[0_1px_4px_rgba(0,0,0,0.04)] transition-all duration-300 ease-in-out";
+  const inputCls = "border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:border-onc focus:ring-1 focus:ring-onc outline-none w-full";
+  const cardCls = "bg-white rounded-2xl border-[0.1px] border-border-card p-5 shadow-[0_1px_4px_rgba(0,0,0,0.04)] transition-all duration-300 ease-in-out";
+  const fmtDateTime = `${appointDT.toDate().toLocaleDateString("th-TH", { day: "numeric", month: "short", year: "numeric" })} ${String(appointDT.hour).padStart(2, "0")}:${String(appointDT.minute).padStart(2, "0")} น.`;
+  const doctorName = roleLabels[role];
 
-  /* ══════════════════ SUCCESS ══════════════════ */
-  if (submitted) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="text-center space-y-4">
-          <div className="w-20 h-20 rounded-full bg-emerald-100 flex items-center justify-center mx-auto">
-            <CheckCircle2 size={40} className="text-emerald-500" />
+  /* ── Shared A4 Preview Modal ── */
+  const previewModal = showPreview && patient && protocol && (
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-8">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden">
+        <div className="px-6 py-4 flex items-center justify-between border-b shrink-0">
+          <div>
+            <p className="font-bold text-[#404040]">ใบสั่งยาเคมีบำบัด</p>
+            <p className="text-xs text-[#898989]">{patient.name} · {protocol.code} · Cycle {cycle}</p>
           </div>
-          <h2 className="text-2xl font-bold text-[#404040]">สั่งคำสั่งยาสำเร็จ</h2>
-          <p className="text-sm text-[#898989]">Order No: <span className="font-bold text-[#404040]">{orderNo}</span></p>
-          <div className={`${cardCls} text-left max-w-sm mx-auto`}>
-            <div className="space-y-2 text-sm">
-              <div className="flex justify-between"><span className="text-[#898989]">ผู้ป่วย</span><span className="font-semibold text-[#404040]">{patient?.name}</span></div>
-              <div className="flex justify-between"><span className="text-[#898989]">Protocol</span><span className="font-semibold text-[#404040]">{protocol?.code} C{cycle}</span></div>
-              <div className="flex justify-between"><span className="text-[#898989]">รายการยา</span><span className="font-semibold text-[#404040]">{orderLines.length} รายการ</span></div>
-              <div className="flex justify-between"><span className="text-[#898989]">วันนัดให้ยา</span><span className="font-semibold text-[#404040]">{appointDate}</span></div>
+          <div className="flex items-center gap-3">
+            <button onClick={() => { const t = document.title; document.title = orderNo || "CHEMO-ORDER"; window.print(); document.title = t; }}
+              className="text-sm font-semibold text-onc border border-onc/30 rounded-full px-4 py-1.5 hover:bg-onc/5 transition-colors flex items-center gap-1.5">
+              <Printer size={14} /> พิมพ์
+            </button>
+            <button onClick={() => { const t = document.title; document.title = orderNo || "CHEMO-ORDER"; window.print(); document.title = t; }}
+              className="text-sm font-semibold text-text bg-gray-100 rounded-full px-4 py-1.5 hover:bg-gray-200 transition-colors flex items-center gap-1.5">
+              <Download size={14} /> บันทึก PDF
+            </button>
+            <button onClick={() => setShowPreview(false)}
+              className="text-sm font-semibold text-text-secondary hover:text-text transition-colors">✕</button>
+          </div>
+        </div>
+        <div className="flex-1 overflow-y-auto p-8 bg-gray-100">
+          <div className="print-area mx-auto bg-white shadow-lg p-8" style={{ width: 595, minHeight: 842, aspectRatio: "1 / 1.4142" }}>
+            {/* Header */}
+            <div className="flex justify-between items-start mb-4 border-b-2 border-[#674BB3] pb-3">
+              <div>
+                <h1 className="text-sm font-bold text-[#674BB3]">โรงพยาบาลตัวอย่าง</h1>
+                <p className="text-[10px] text-[#898989]">คลินิกเคมีบำบัด / Chemotherapy Clinic</p>
+              </div>
+              <div className="text-right">
+                <p className="text-[10px] font-bold text-red-600">ใบสั่งยาเคมีบำบัด</p>
+                <p className="text-[10px] text-[#898989]">เลขที่: <span className="font-mono font-bold text-[#404040]">{orderNo || "DRAFT"}</span></p>
+              </div>
+            </div>
+
+            {/* Patient info */}
+            <div className="border border-gray-300 rounded-lg p-2 mb-3 text-[10px]">
+              <div className="grid grid-cols-4 gap-1">
+                <div className="col-span-2"><span className="text-[#898989]">ชื่อ-สกุล: </span><span className="font-bold">{patient.name}</span></div>
+                <div><span className="text-[#898989]">HN: </span><span className="font-bold">{patient.hn}</span></div>
+                <div><span className="text-[#898989]">เพศ: </span><span className="font-bold">{patient.gender}</span></div>
+              </div>
+              <div className="grid grid-cols-4 gap-1 mt-1">
+                <div><span className="text-[#898989]">อายุ: </span><span className="font-bold">{formatAge(patient.dob)}</span></div>
+                <div><span className="text-[#898989]">BW: </span><span className="font-bold">{wt} kg</span></div>
+                <div><span className="text-[#898989]">HT: </span><span className="font-bold">{ht} cm</span></div>
+                <div><span className="text-[#898989]">BSA: </span><span className="font-bold">{bsa} m²</span></div>
+              </div>
+              <div className="grid grid-cols-4 gap-1 mt-1">
+                <div><span className="text-[#898989]">CrCl: </span><span className="font-bold">{patient.crcl} mL/min</span></div>
+                <div><span className="text-[#898989]">ECOG: </span><span className="font-bold">{ecog}</span></div>
+                <div><span className="text-[#898989]">Cr: </span><span className="font-bold">{patient.creatinine} mg/dL</span></div>
+                <div />
+              </div>
+            </div>
+
+            {/* Diagnosis */}
+            <div className="border border-gray-300 rounded-lg p-2 mb-3 text-[10px]">
+              <div className="grid grid-cols-3 gap-1">
+                <div><span className="text-[#898989]">Diagnosis: </span><span className="font-bold">{patient.diagnosis}</span></div>
+                <div><span className="text-[#898989]">ICD-10: </span><span className="font-bold">{patient.icd10}</span></div>
+                <div><span className="text-[#898989]">Stage: </span><span className="font-bold text-[#674BB3]">{patient.stage}</span></div>
+              </div>
+              <div className="grid grid-cols-3 gap-1 mt-1">
+                <div><span className="text-[#898989]">Morphology: </span><span className="font-bold">{patient.morphology}</span></div>
+                <div><span className="text-[#898989]">TNM: </span><span className="font-bold">T{patient.t}N{patient.n}M{patient.m}</span></div>
+                {patient.allergy && patient.allergy !== "—" && (
+                  <div><span className="text-[#898989]">แพ้ยา: </span><span className="font-bold text-red-600">{patient.allergy}</span></div>
+                )}
+              </div>
+            </div>
+
+            {/* Protocol & Schedule */}
+            <div className="border border-gray-300 rounded-lg p-2 mb-3 text-[10px]">
+              <div className="grid grid-cols-4 gap-1">
+                <div><span className="text-[#898989]">Protocol: </span><span className="font-bold text-[#674BB3] text-xs">{protocol.code}</span></div>
+                <div><span className="text-[#898989]">Cycle: </span><span className="font-bold text-xs">{cycle}/{protocol.totalCycles}</span></div>
+                <div><span className="text-[#898989]">Schedule: </span><span className="font-bold">q{protocol.cycleDays}d</span></div>
+                <div><span className="text-[#898989]">Day: </span><span className="font-bold">{protocol.treatmentDays.join(", ")}</span></div>
+              </div>
+              <div className="grid grid-cols-3 gap-1 mt-1">
+                <div><span className="text-[#898989]">วันให้ยา: </span><span className="font-bold">{fmtDateTime}</span></div>
+                <div><span className="text-[#898989]">Dose: </span><span className={`font-bold ${doseReduction < 100 ? "text-amber-600" : "text-emerald-600"}`}>{doseReduction}%</span></div>
+                <div><span className="text-[#898989]">Emeto Risk: </span><span className={`font-bold ${protocol.emetogenicRisk === "High" ? "text-red-600" : protocol.emetogenicRisk === "Moderate" ? "text-amber-600" : "text-emerald-600"}`}>{protocol.emetogenicRisk}</span></div>
+              </div>
+              <div className="mt-1">
+                <span className="text-[#898989]">Reference: </span><span className="font-bold">{protocol.reference}</span>
+              </div>
+            </div>
+
+            {/* Drug table */}
+            <table className="w-full text-[10px] border border-gray-300 mb-3">
+              <thead>
+                <tr className="bg-gray-50 text-[#898989]">
+                  <th className="border border-gray-300 px-2 py-1 text-left">ลำดับ</th>
+                  <th className="border border-gray-300 px-2 py-1 text-left">ประเภท</th>
+                  <th className="border border-gray-300 px-2 py-1 text-left">ชื่อยา</th>
+                  <th className="border border-gray-300 px-2 py-1 text-right">ขนาดมาตรฐาน</th>
+                  <th className="border border-gray-300 px-2 py-1 text-right">ขนาดที่สั่ง</th>
+                  <th className="border border-gray-300 px-2 py-1 text-center">Route</th>
+                  <th className="border border-gray-300 px-2 py-1 text-left">Diluent</th>
+                  <th className="border border-gray-300 px-2 py-1 text-center">เวลาให้ยา</th>
+                  <th className="border border-gray-300 px-2 py-1 text-center">Day</th>
+                </tr>
+              </thead>
+              <tbody>
+                {orderLines.map((d, i) => (
+                  <tr key={i}>
+                    <td className="border border-gray-300 px-2 py-1.5 text-center">{i + 1}</td>
+                    <td className="border border-gray-300 px-2 py-1.5">
+                      <span className={d.classification === "premedication" ? "text-blue-700" : d.classification === "chemotherapy" ? "text-red-700" : "text-gray-600"}>
+                        {d.classification === "premedication" ? "Pre-med" : d.classification === "chemotherapy" ? "Chemo" : "Post-med"}
+                      </span>
+                    </td>
+                    <td className="border border-gray-300 px-2 py-1.5 font-bold">{d.name}</td>
+                    <td className="border border-gray-300 px-2 py-1.5 text-right text-[#898989]">{d.baseDose} {d.unit}</td>
+                    <td className="border border-gray-300 px-2 py-1.5 text-right font-bold">{d.finalDose} {d.unit}</td>
+                    <td className="border border-gray-300 px-2 py-1.5 text-center">{d.route}</td>
+                    <td className="border border-gray-300 px-2 py-1.5 text-[#898989]">{d.diluent}</td>
+                    <td className="border border-gray-300 px-2 py-1.5 text-center">{d.rate}</td>
+                    <td className="border border-gray-300 px-2 py-1.5 text-center">D{d.day}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+
+            {/* Clinical note */}
+            {clinicalNote && (
+              <div className="border border-gray-300 rounded-lg p-2 mb-3 text-[10px]">
+                <span className="text-[#898989]">บันทึกทางคลินิก: </span>
+                <span className="font-bold">{clinicalNote}</span>
+              </div>
+            )}
+
+            {/* Key monitoring */}
+            <div className="border border-gray-300 rounded-lg p-2 mb-6 text-[10px]">
+              <p className="text-[#898989] font-semibold mb-1">การเฝ้าระวังสำคัญ:</p>
+              <ul className="list-disc list-inside text-[#404040]">
+                {protocol.keyMonitoring.map((m, i) => <li key={i}>{m}</li>)}
+              </ul>
+            </div>
+
+            {/* Signatures */}
+            <div className="grid grid-cols-3 gap-6 text-center text-[10px] border-t-2 border-gray-400 pt-4">
+              <div>
+                <p className="font-bold">แพทย์ผู้สั่งยา</p>
+                <p className="font-semibold text-[#674BB3]">{doctorName}</p>
+                <div className="border-b border-dotted border-gray-400 w-3/4 mx-auto mt-1 mb-1" />
+                <p className="text-[#898989]">วันที่: {fmtDateTime}</p>
+              </div>
+              <div>
+                <p className="font-bold">เภสัชกรผู้ตรวจสอบ</p>
+                <div className="border-b border-dotted border-gray-400 w-3/4 mx-auto mt-4 mb-1" />
+                <p className="text-[#898989]">วันที่: ............... เวลา: ........ น.</p>
+              </div>
+              <div>
+                <p className="font-bold">พยาบาลผู้ให้ยา</p>
+                <div className="border-b border-dotted border-gray-400 w-3/4 mx-auto mt-4 mb-1" />
+                <p className="text-[#898989]">วันที่: ............... เวลา: ........ น.</p>
+              </div>
+            </div>
+            <p className="text-center text-[8px] text-[#898989] mt-4">
+              สั่งพิมพ์: {new Date().toLocaleDateString("th-TH")} · ระบบบริหารจัดการยาเคมีบำบัด · โรงพยาบาลตัวอย่าง · {orderNo || "DRAFT"}
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  /* ══════════════════ GENERATING ══════════════════ */
+  if (generating) {
+    const genSteps = [
+      "กำลังตรวจสอบข้อมูลผู้ป่วย...",
+      "กำลังคำนวณขนาดยา...",
+      "กำลังสร้างใบสั่งยา...",
+      "กำลังลงนามดิจิทัล...",
+    ];
+    return (
+      <div className="flex items-center justify-center h-full">
+        <div className="w-full max-w-md space-y-8 flex flex-col items-center">
+          {/* Skeleton A4 */}
+          <div className="mx-auto bg-white rounded-xl shadow-lg p-6 space-y-4" style={{ width: 340, aspectRatio: "1 / 1.4142" }}>
+            <div className="flex justify-between items-start">
+              <div className="space-y-1.5">
+                <div className="onc-skeleton h-3 w-28" />
+                <div className="onc-skeleton h-2 w-20" />
+              </div>
+              <div className="space-y-1.5 flex flex-col items-end">
+                <div className="onc-skeleton h-2.5 w-16" />
+                <div className="onc-skeleton h-2 w-24" />
+              </div>
+            </div>
+            <div className="onc-skeleton h-px w-full" />
+            <div className="space-y-2">
+              <div className="onc-skeleton h-2.5 w-full" />
+              <div className="onc-skeleton h-2.5 w-3/4" />
+            </div>
+            <div className="space-y-2 pt-2">
+              <div className="onc-skeleton h-2.5 w-full" />
+              <div className="onc-skeleton h-2.5 w-5/6" />
+              <div className="onc-skeleton h-2.5 w-2/3" />
+            </div>
+            <div className="space-y-1.5 pt-2">
+              {[...Array(5)].map((_, i) => <div key={i} className="onc-skeleton h-3 w-full" />)}
+            </div>
+            <div className="flex justify-between pt-4">
+              <div className="onc-skeleton h-8 w-20" />
+              <div className="onc-skeleton h-8 w-20" />
+              <div className="onc-skeleton h-8 w-20" />
             </div>
           </div>
-          <div className="flex items-center justify-center gap-3">
-            <button onClick={() => navigate("/onc")} className="bg-[#674BB3] text-white font-semibold rounded-xl px-6 py-3 hover:bg-[#563AA4] transition-colors">
-              กลับหน้าหลัก
+
+          {/* Progress steps */}
+          <div className="space-y-3 max-w-xs mx-auto">
+            {genSteps.map((label, i) => (
+              <div key={i} className={`flex items-center gap-3 transition-all duration-300 ${i <= genStep ? "opacity-100" : "opacity-30"}`}>
+                {i < genStep ? (
+                  <CheckCircle2 size={18} className="text-emerald-500 shrink-0" />
+                ) : i === genStep ? (
+                  <span className="w-[18px] h-[18px] border-2 border-onc/30 border-t-onc rounded-full animate-spin shrink-0" />
+                ) : (
+                  <div className="w-[18px] h-[18px] rounded-full border-2 border-gray-200 shrink-0" />
+                )}
+                <span className={`text-sm ${i < genStep ? "text-emerald-600 font-semibold" : i === genStep ? "text-[#404040] font-semibold" : "text-[#898989]"}`}>{label}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  /* ══════════════════ SUCCESS ══════════════════ */
+  if (submitted && patient && protocol) {
+    return (
+      <div className="space-y-4">
+        {/* Success banner */}
+        <div className="flex items-center gap-3 bg-white rounded-2xl border-[0.1px] border-border-card px-5 py-3" style={{ boxShadow: "0 1px 4px rgba(0,0,0,0.04)" }}>
+          <CheckCircle2 size={18} className="text-emerald-500 shrink-0" />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-bold text-[#404040]">สั่งคำสั่งยาสำเร็จ</p>
+            <p className="text-xs text-[#898989]">{orderNo} · {patient.name} · {protocol.code} C{cycle}</p>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <button onClick={() => { const t = document.title; document.title = orderNo || "CHEMO-ORDER"; window.print(); document.title = t; }} className="text-xs font-semibold text-[#404040] border border-gray-200 rounded-lg px-3 py-1.5 hover:bg-gray-50 active:scale-95 transition-all flex items-center gap-1.5">
+              <Printer size={13} /> พิมพ์
             </button>
-            <button onClick={handleReset} className="border border-gray-300 text-[#404040] font-semibold rounded-xl px-6 py-3 hover:bg-gray-50 transition-colors">
+            <button onClick={() => { const t = document.title; document.title = orderNo || "CHEMO-ORDER"; window.print(); document.title = t; }} className="text-xs font-semibold text-[#404040] border border-gray-200 rounded-lg px-3 py-1.5 hover:bg-gray-50 active:scale-95 transition-all flex items-center gap-1.5">
+              <Download size={13} /> PDF
+            </button>
+            <button onClick={handleReset} className="text-xs font-semibold text-[#404040] border border-gray-200 rounded-lg px-3 py-1.5 hover:bg-gray-50 active:scale-95 transition-all">
               สั่งยาใหม่
             </button>
+            <button onClick={() => navigate("/onc")} className="text-xs font-semibold text-white bg-onc rounded-lg px-4 py-1.5 hover:bg-onc-hover active:scale-95 transition-all">
+              กลับหน้าหลัก
+            </button>
+          </div>
+        </div>
+
+        {/* Inline A4 document */}
+        <div className="overflow-y-auto rounded-2xl bg-gray-100 p-8" style={{ maxHeight: "calc(100vh - 220px)" }}>
+          <div className="print-area mx-auto bg-white shadow-lg p-8" style={{ width: 595, minHeight: 842, aspectRatio: "1 / 1.4142" }}>
+            {/* Header */}
+            <div className="flex justify-between items-start mb-4 border-b-2 border-[#674BB3] pb-3">
+              <div>
+                <h1 className="text-sm font-bold text-[#674BB3]">โรงพยาบาลตัวอย่าง</h1>
+                <p className="text-[10px] text-[#898989]">คลินิกเคมีบำบัด / Chemotherapy Clinic</p>
+              </div>
+              <div className="text-right">
+                <p className="text-[10px] font-bold text-red-600">ใบสั่งยาเคมีบำบัด</p>
+                <p className="text-[10px] text-[#898989]">เลขที่: <span className="font-mono font-bold text-[#404040]">{orderNo}</span></p>
+              </div>
+            </div>
+
+            {/* Patient info */}
+            <div className="border border-gray-300 rounded-lg p-2 mb-3 text-[10px]">
+              <div className="grid grid-cols-4 gap-1">
+                <div className="col-span-2"><span className="text-[#898989]">ชื่อ-สกุล: </span><span className="font-bold">{patient.name}</span></div>
+                <div><span className="text-[#898989]">HN: </span><span className="font-bold">{patient.hn}</span></div>
+                <div><span className="text-[#898989]">เพศ: </span><span className="font-bold">{patient.gender}</span></div>
+              </div>
+              <div className="grid grid-cols-4 gap-1 mt-1">
+                <div><span className="text-[#898989]">อายุ: </span><span className="font-bold">{formatAge(patient.dob)}</span></div>
+                <div><span className="text-[#898989]">BW: </span><span className="font-bold">{wt} kg</span></div>
+                <div><span className="text-[#898989]">HT: </span><span className="font-bold">{ht} cm</span></div>
+                <div><span className="text-[#898989]">BSA: </span><span className="font-bold">{bsa} m²</span></div>
+              </div>
+              <div className="grid grid-cols-4 gap-1 mt-1">
+                <div><span className="text-[#898989]">CrCl: </span><span className="font-bold">{patient.crcl} mL/min</span></div>
+                <div><span className="text-[#898989]">ECOG: </span><span className="font-bold">{ecog}</span></div>
+                <div><span className="text-[#898989]">Cr: </span><span className="font-bold">{patient.creatinine} mg/dL</span></div>
+                <div />
+              </div>
+            </div>
+
+            {/* Diagnosis */}
+            <div className="border border-gray-300 rounded-lg p-2 mb-3 text-[10px]">
+              <div className="grid grid-cols-3 gap-1">
+                <div><span className="text-[#898989]">Diagnosis: </span><span className="font-bold">{patient.diagnosis}</span></div>
+                <div><span className="text-[#898989]">ICD-10: </span><span className="font-bold">{patient.icd10}</span></div>
+                <div><span className="text-[#898989]">Stage: </span><span className="font-bold text-[#674BB3]">{patient.stage}</span></div>
+              </div>
+              <div className="grid grid-cols-3 gap-1 mt-1">
+                <div><span className="text-[#898989]">Morphology: </span><span className="font-bold">{patient.morphology}</span></div>
+                <div><span className="text-[#898989]">TNM: </span><span className="font-bold">T{patient.t}N{patient.n}M{patient.m}</span></div>
+                {patient.allergy && patient.allergy !== "—" && (
+                  <div><span className="text-[#898989]">แพ้ยา: </span><span className="font-bold text-red-600">{patient.allergy}</span></div>
+                )}
+              </div>
+            </div>
+
+            {/* Protocol & Schedule */}
+            <div className="border border-gray-300 rounded-lg p-2 mb-3 text-[10px]">
+              <div className="grid grid-cols-4 gap-1">
+                <div><span className="text-[#898989]">Protocol: </span><span className="font-bold text-[#674BB3] text-xs">{protocol.code}</span></div>
+                <div><span className="text-[#898989]">Cycle: </span><span className="font-bold text-xs">{cycle}/{protocol.totalCycles}</span></div>
+                <div><span className="text-[#898989]">Schedule: </span><span className="font-bold">q{protocol.cycleDays}d</span></div>
+                <div><span className="text-[#898989]">Day: </span><span className="font-bold">{protocol.treatmentDays.join(", ")}</span></div>
+              </div>
+              <div className="grid grid-cols-3 gap-1 mt-1">
+                <div><span className="text-[#898989]">วันให้ยา: </span><span className="font-bold">{fmtDateTime}</span></div>
+                <div><span className="text-[#898989]">Dose: </span><span className={`font-bold ${doseReduction < 100 ? "text-amber-600" : "text-emerald-600"}`}>{doseReduction}%</span></div>
+                <div><span className="text-[#898989]">Emeto Risk: </span><span className={`font-bold ${protocol.emetogenicRisk === "High" ? "text-red-600" : protocol.emetogenicRisk === "Moderate" ? "text-amber-600" : "text-emerald-600"}`}>{protocol.emetogenicRisk}</span></div>
+              </div>
+              <div className="mt-1">
+                <span className="text-[#898989]">Reference: </span><span className="font-bold">{protocol.reference}</span>
+              </div>
+            </div>
+
+            {/* Drug table */}
+            <table className="w-full text-[10px] border border-gray-300 mb-3">
+              <thead>
+                <tr className="bg-gray-50 text-[#898989]">
+                  <th className="border border-gray-300 px-2 py-1 text-left">ลำดับ</th>
+                  <th className="border border-gray-300 px-2 py-1 text-left">ประเภท</th>
+                  <th className="border border-gray-300 px-2 py-1 text-left">ชื่อยา</th>
+                  <th className="border border-gray-300 px-2 py-1 text-right">ขนาดมาตรฐาน</th>
+                  <th className="border border-gray-300 px-2 py-1 text-right">ขนาดที่สั่ง</th>
+                  <th className="border border-gray-300 px-2 py-1 text-center">Route</th>
+                  <th className="border border-gray-300 px-2 py-1 text-left">Diluent</th>
+                  <th className="border border-gray-300 px-2 py-1 text-center">เวลาให้ยา</th>
+                  <th className="border border-gray-300 px-2 py-1 text-center">Day</th>
+                </tr>
+              </thead>
+              <tbody>
+                {orderLines.map((d, i) => (
+                  <tr key={i}>
+                    <td className="border border-gray-300 px-2 py-1.5 text-center">{i + 1}</td>
+                    <td className="border border-gray-300 px-2 py-1.5">
+                      <span className={d.classification === "premedication" ? "text-blue-700" : d.classification === "chemotherapy" ? "text-red-700" : "text-gray-600"}>
+                        {d.classification === "premedication" ? "Pre-med" : d.classification === "chemotherapy" ? "Chemo" : "Post-med"}
+                      </span>
+                    </td>
+                    <td className="border border-gray-300 px-2 py-1.5 font-bold">{d.name}</td>
+                    <td className="border border-gray-300 px-2 py-1.5 text-right text-[#898989]">{d.baseDose} {d.unit}</td>
+                    <td className="border border-gray-300 px-2 py-1.5 text-right font-bold">{d.finalDose} {d.unit}</td>
+                    <td className="border border-gray-300 px-2 py-1.5 text-center">{d.route}</td>
+                    <td className="border border-gray-300 px-2 py-1.5 text-[#898989]">{d.diluent}</td>
+                    <td className="border border-gray-300 px-2 py-1.5 text-center">{d.rate}</td>
+                    <td className="border border-gray-300 px-2 py-1.5 text-center">D{d.day}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+
+            {/* Clinical note */}
+            {clinicalNote && (
+              <div className="border border-gray-300 rounded-lg p-2 mb-3 text-[10px]">
+                <span className="text-[#898989]">บันทึกทางคลินิก: </span>
+                <span className="font-bold">{clinicalNote}</span>
+              </div>
+            )}
+
+            {/* Key monitoring */}
+            <div className="border border-gray-300 rounded-lg p-2 mb-6 text-[10px]">
+              <p className="text-[#898989] font-semibold mb-1">การเฝ้าระวังสำคัญ:</p>
+              <ul className="list-disc list-inside text-[#404040]">
+                {protocol.keyMonitoring.map((m, i) => <li key={i}>{m}</li>)}
+              </ul>
+            </div>
+
+            {/* Signatures */}
+            <div className="grid grid-cols-3 gap-6 text-center text-[10px] border-t-2 border-gray-400 pt-4">
+              <div>
+                <p className="font-bold">แพทย์ผู้สั่งยา</p>
+                <p className="font-semibold text-[#674BB3]">{doctorName}</p>
+                <div className="border-b border-dotted border-gray-400 w-3/4 mx-auto mt-1 mb-1" />
+                <p className="text-[#898989]">วันที่: {fmtDateTime}</p>
+              </div>
+              <div>
+                <p className="font-bold">เภสัชกรผู้ตรวจสอบ</p>
+                <div className="border-b border-dotted border-gray-400 w-3/4 mx-auto mt-4 mb-1" />
+                <p className="text-[#898989]">วันที่: ............... เวลา: ........ น.</p>
+              </div>
+              <div>
+                <p className="font-bold">พยาบาลผู้ให้ยา</p>
+                <div className="border-b border-dotted border-gray-400 w-3/4 mx-auto mt-4 mb-1" />
+                <p className="text-[#898989]">วันที่: ............... เวลา: ........ น.</p>
+              </div>
+            </div>
+            <p className="text-center text-[8px] text-[#898989] mt-4">
+              สั่งพิมพ์: {new Date().toLocaleDateString("th-TH")} · ระบบบริหารจัดการยาเคมีบำบัด · โรงพยาบาลตัวอย่าง · {orderNo}
+            </p>
           </div>
         </div>
       </div>
@@ -508,7 +930,7 @@ export default function OrderEntry({ embedded = false, patientHN, onStepChange, 
             const EcogIcon = [Bike, PersonStanding, Armchair, BedDouble, Hospital][score];
             return (
               <button key={score} onClick={() => setEcog(score)}
-                className={`rounded-2xl border-[0.1px] border-[#d9d9d9]/25 px-6 pt-5 pb-6 text-left transition-all flex flex-col items-start min-h-[200px] ${active ? "ring-2 ring-[#674BB3]/30 bg-[#674BB3]/5" : "bg-white hover:bg-gray-50"
+                className={`rounded-2xl border-[0.1px] border-border-card px-6 pt-5 pb-6 text-left transition-all flex flex-col items-start min-h-[200px] ${active ? "ring-2 ring-onc/30 bg-onc/5" : "bg-white hover:bg-gray-50"
                   }`} style={{ boxShadow: "0 1px 4px rgba(0,0,0,0.04)" }}>
                 <EcogIcon size={28} className={active ? "text-[#674BB3]" : "text-[#898989]"} />
                 <p className={`text-base font-bold mt-auto ${active ? "text-[#674BB3]" : "text-[#404040]"}`}>ECOG {score}</p>
@@ -645,13 +1067,13 @@ export default function OrderEntry({ embedded = false, patientHN, onStepChange, 
                           <td className="px-2 py-2 text-[#898989]">{d.seq}</td>
                           <td className="px-2 py-2 font-semibold text-[#404040]">{d.name}</td>
                           <td className="px-2 py-2">
-                            <span className="text-xs text-[#674BB3] bg-[#674BB3]/5 px-2 py-1 rounded font-mono">
+                            <span className="text-xs text-[#674BB3] bg-onc/5 px-2 py-1 rounded font-mono">
                               {formula}{reductionNote}
                             </span>
                           </td>
                           <td className="px-2 py-2 text-right text-[#898989]">{d.calcDose} mg</td>
                           <td className="px-2 py-2 text-right">
-                            <div className="inline-flex items-center border border-gray-300 rounded-lg overflow-hidden focus-within:border-[#674BB3] focus-within:ring-1 focus-within:ring-[#674BB3]">
+                            <div className="inline-flex items-center border border-gray-300 rounded-lg overflow-hidden focus-within:border-onc focus-within:ring-1 focus-within:ring-onc">
                               <input type="text" inputMode="numeric" value={d.finalDose}
                                 onChange={e => {
                                   const val = Number(e.target.value) || 0;
@@ -775,45 +1197,106 @@ export default function OrderEntry({ embedded = false, patientHN, onStepChange, 
       </div>
     )}
 
-    {/* ═══ STEP 4: Review ═══ */}
+    {/* ═══ STEP 4: Schedule & Note ═══ */}
     {step === 4 && protocol && patient && (
+      <div className="space-y-4">
+        <div className="grid grid-cols-2 gap-4">
+          {/* Schedule */}
+          <div className={cardCls}>
+            <h3 className="text-sm font-bold text-[#404040] mb-3">กำหนดการให้ยา</h3>
+            <DatePicker
+              label=""
+              value={appointDT}
+              onChange={(v) => { if (v) setAppointDT(v as ZonedDateTime); }}
+              granularity="minute"
+              hourCycle={24}
+              hideTimeZone
+              variant="bordered"
+              minValue={now(tz)}
+              popoverProps={{ placement: "bottom-end", className: "bg-white shadow-xl rounded-xl border border-gray-200" }}
+              calendarProps={{
+                classNames: {
+                  cellButton: [
+                    "data-[selected=true]:!bg-[#674BB3] data-[selected=true]:!text-white",
+                    "data-[today=true]:border data-[today=true]:border-[#674BB3]",
+                    "data-[unavailable=true]:!opacity-30 data-[disabled=true]:!opacity-30",
+                    "hover:bg-onc/10",
+                  ].join(" "),
+                },
+              }}
+              timeInputProps={{ label: "เวลา", endContent: <span className="text-xs text-[#898989] ml-1">นาฬิกา</span> }}
+            />
+          </div>
+
+          {/* Cycle */}
+          <div className={cardCls}>
+            <h3 className="text-sm font-bold text-[#404040] mb-3">Cycle ({protocol.totalCycles} รอบ)</h3>
+            <div className="flex flex-wrap gap-2">
+              {Array.from({ length: protocol.totalCycles }, (_, i) => i + 1).map(c => (
+                <button key={c} type="button" onClick={() => setCycle(c)}
+                  className={`flex-1 min-w-[48px] h-10 rounded-xl text-sm font-bold transition-all active:scale-95 ${
+                    cycle === c
+                      ? "bg-onc text-white shadow-md"
+                      : c < (patient.currentCycle ?? 1)
+                        ? "bg-emerald-50 text-emerald-600 border border-emerald-200"
+                        : "bg-gray-50 text-text-secondary border border-gray-200 hover:border-onc hover:text-onc"
+                  }`}>
+                  {c}
+                </button>
+              ))}
+            </div>
+            <p className="text-xs text-[#898989] mt-3">
+              {cycle < (patient.currentCycle ?? 1) ? "รอบที่ผ่านมาแล้ว" : cycle === (patient.currentCycle ?? 1) ? "รอบปัจจุบัน" : "รอบถัดไป"}
+              {" · "}q{protocol.cycleDays}d
+            </p>
+          </div>
+
+        </div>
+
+        {/* Clinical Note — full width */}
+        <div className={cardCls}>
+          <h3 className="text-sm font-bold text-[#404040] mb-2">บันทึกทางคลินิก</h3>
+          <textarea value={clinicalNote} onChange={e => setClinicalNote(e.target.value)} rows={7}
+            placeholder="บันทึกเพิ่มเติม..." className={inputCls} />
+        </div>
+      </div>
+    )}
+
+    {/* ═══ STEP 5: Review & Sign ═══ */}
+    {step === 5 && protocol && patient && (
       <div className="space-y-4">
 
         {/* Patient info */}
         <div className={cardCls}>
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
               <p className="text-lg font-bold text-[#404040]">{patient.name}</p>
               <p className="text-sm text-[#898989]">HN {patient.hn} · {patient.gender} · {patient.diagnosis}</p>
             </div>
-            <div className="flex gap-2">
-              <span className="text-xs font-bold text-[#674BB3] bg-[#674BB3]/10 px-3 py-1 rounded-full">BSA {bsa} m²</span>
-              <span className="text-xs font-bold text-[#674BB3] bg-[#674BB3]/10 px-3 py-1 rounded-full">ECOG {ecog}</span>
-              <span className="text-xs font-bold text-[#674BB3] bg-[#674BB3]/10 px-3 py-1 rounded-full">CrCl {patient.crcl} mL/min</span>
+            <div className="flex flex-wrap gap-2">
+              <span className="text-xs font-bold text-[#674BB3] bg-onc/10 px-3 py-1 rounded-full">BSA {bsa} m²</span>
+              <span className="text-xs font-bold text-[#674BB3] bg-onc/10 px-3 py-1 rounded-full">ECOG {ecog}</span>
+              <span className="text-xs font-bold text-[#674BB3] bg-onc/10 px-3 py-1 rounded-full">CrCl {patient.crcl} mL/min</span>
             </div>
           </div>
         </div>
 
         {/* Top row: Protocol summary + Appointment details */}
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 2xl:grid-cols-[1fr_1fr] gap-4">
           {/* Protocol summary */}
-          <div className="relative rounded-2xl p-5 overflow-hidden grid " style={{ background: "linear-gradient(135deg, #EDE9F6 0%, #D8D0F0 50%, #C8BFE8 100%)" }}>
-            <div className="relative z-10 max-w-[60%] grid grid-cols-1">
+          <div className="relative rounded-2xl p-5 overflow-hidden min-h-40" style={{ background: "linear-gradient(135deg, #EDE9F6 0%, #D8D0F0 50%, #C8BFE8 100%)" }}>
+            <div className="relative z-10 max-w-[70%] sm:max-w-[60%]">
               <p className="text-xs font-semibold text-[#674BB3]/70 uppercase tracking-wide">สูตรเคมีบำบัด</p>
-              <p className="text-4xl font-black text-[#404040] mt-3">{protocol.code}</p>
+              <p className="text-3xl 2xl:text-4xl font-black text-[#404040] mt-3">{protocol.code}</p>
               <p className="text-sm text-[#404040]/70 font-medium mt-1">Cycle {cycle} / {protocol.totalCycles} · q{protocol.cycleDays}d</p>
-              <div className="">
-
-                <div className="flex flex-wrap gap-2 ">
-                  <span className="text-xs font-bold text-[#674BB3] bg-white/70 px-3 py-1 rounded-full">{protocol.cancer}</span>
-                  <span className="text-xs font-bold text-[#674BB3] bg-white/70 px-3 py-1 rounded-full">{protocol.line}</span>
-                  <span className="text-xs font-bold text-[#674BB3] bg-white/70 px-3 py-1 rounded-full">Emeto: {protocol.emetogenicRisk}</span>
-                </div>
-                <p className="text-xs text-[#404040]/60 mt-2">{protocol.drugs.filter(d => d.classification === "chemotherapy").map(d => d.name).join(" + ")}</p>
-
+              <div className="flex flex-wrap gap-2 mt-3">
+                <span className="text-xs font-bold text-[#674BB3] bg-white/70 px-3 py-1 rounded-full">{protocol.cancer}</span>
+                <span className="text-xs font-bold text-[#674BB3] bg-white/70 px-3 py-1 rounded-full">{protocol.line}</span>
+                <span className="text-xs font-bold text-[#674BB3] bg-white/70 px-3 py-1 rounded-full">Emeto: {protocol.emetogenicRisk}</span>
               </div>
+              <p className="text-xs text-[#404040]/60 mt-2">{protocol.drugs.filter(d => d.classification === "chemotherapy").map(d => d.name).join(" + ")}</p>
             </div>
-            <img src={`${import.meta.env.BASE_URL}onc/chemo-hand.png`} alt="" className="absolute right-8 -bottom-8 h-[110%] object-contain pointer-events-none opacity-80" />
+            <img src={`${import.meta.env.BASE_URL}onc/chemo-hand.png`} alt="" className="absolute right-4 2xl:right-8 -bottom-6 h-[90%] 2xl:h-[110%] object-contain pointer-events-none opacity-80" />
           </div>
           {/* Appointment details */}
           <div className={cardCls}>
@@ -821,7 +1304,7 @@ export default function OrderEntry({ embedded = false, patientHN, onStepChange, 
             <div className="space-y-3 mt-4 text-sm">
               <div className="flex justify-between">
                 <span className="text-[#898989]">วันนัดให้ยา</span>
-                <span className="font-semibold text-[#404040]">{appointDate}</span>
+                <span className="font-semibold text-[#404040]">{fmtDateTime}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-[#898989]">ปรับขนาดยา</span>
@@ -842,39 +1325,41 @@ export default function OrderEntry({ embedded = false, patientHN, onStepChange, 
         </div>
 
         {/* Drug list — full width */}
-        <div className={cardCls}>
+        <div className={`${cardCls} overflow-x-auto`}>
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-sm font-bold text-[#404040]">รายการยา</h3>
             <span className="text-xs font-semibold text-[#898989]">ขนาด</span>
           </div>
-          {orderLines.filter(d => d.classification === "chemotherapy").length > 0 && (
-            <>
-              <p className="text-xs font-semibold text-[#898989] uppercase tracking-wide mb-2">ยาเคมีบำบัด</p>
-              {orderLines.filter(d => d.classification === "chemotherapy").map((d, i) => (
-                <div key={i} className="flex justify-between text-sm py-2 pl-4 border-b border-gray-50 hover:bg-gray-50/50 transition-colors">
-                  <div>
-                    <span className="font-semibold text-[#404040]">{d.name}</span>
-                    <span className="text-xs text-[#898989] ml-2">{d.route} · {d.rate}</span>
+          <div className="min-w-100">
+            {orderLines.filter(d => d.classification === "chemotherapy").length > 0 && (
+              <>
+                <p className="text-xs font-semibold text-[#898989] uppercase tracking-wide mb-2">ยาเคมีบำบัด</p>
+                {orderLines.filter(d => d.classification === "chemotherapy").map((d, i) => (
+                  <div key={i} className="flex justify-between text-sm py-2 pl-4 border-b border-gray-50 hover:bg-gray-50/50 transition-colors">
+                    <div className="min-w-0">
+                      <span className="font-semibold text-[#404040]">{d.name}</span>
+                      <span className="text-xs text-[#898989] ml-2">{d.route} · {d.rate}</span>
+                    </div>
+                    <span className="font-bold text-[#404040] shrink-0 ml-4">{d.finalDose} mg</span>
                   </div>
-                  <span className="font-bold text-[#404040]">{d.finalDose} mg</span>
-                </div>
-              ))}
-            </>
-          )}
-          {orderLines.filter(d => d.classification === "premedication").length > 0 && (
-            <>
-              <p className="text-xs font-semibold text-[#898989] uppercase tracking-wide mb-2 mt-4">ยาก่อนเคมีบำบัด</p>
-              {orderLines.filter(d => d.classification === "premedication").map((d, i) => (
-                <div key={i} className="flex justify-between text-sm py-2 pl-4 border-b border-gray-50 hover:bg-gray-50/50 transition-colors">
-                  <div>
-                    <span className="font-semibold text-[#404040]">{d.name}</span>
-                    <span className="text-xs text-[#898989] ml-2">{d.route} · {d.rate}</span>
+                ))}
+              </>
+            )}
+            {orderLines.filter(d => d.classification === "premedication").length > 0 && (
+              <>
+                <p className="text-xs font-semibold text-[#898989] uppercase tracking-wide mb-2 mt-4">ยาก่อนเคมีบำบัด</p>
+                {orderLines.filter(d => d.classification === "premedication").map((d, i) => (
+                  <div key={i} className="flex justify-between text-sm py-2 pl-4 border-b border-gray-50 hover:bg-gray-50/50 transition-colors">
+                    <div className="min-w-0">
+                      <span className="font-semibold text-[#404040]">{d.name}</span>
+                      <span className="text-xs text-[#898989] ml-2">{d.route} · {d.rate}</span>
+                    </div>
+                    <span className="font-bold text-[#404040] shrink-0 ml-4">{d.finalDose} {d.unit}</span>
                   </div>
-                  <span className="font-bold text-[#404040]">{d.finalDose} {d.unit}</span>
-                </div>
-              ))}
-            </>
-          )}
+                ))}
+              </>
+            )}
+          </div>
         </div>
 
         
@@ -889,40 +1374,44 @@ export default function OrderEntry({ embedded = false, patientHN, onStepChange, 
     <div className="flex items-center gap-3">
       {step > 1 && (
         <button onClick={handleBack}
-          className="text-sm font-semibold text-[#898989] hover:text-[#674BB3] border border-gray-200 rounded-full px-5 py-1.5 transition-colors">
+          className="text-sm font-semibold text-[#898989] hover:text-onc border border-gray-200 rounded-full px-5 py-1.5 transition-colors">
           ย้อนกลับ
         </button>
       )}
-      {step < 4 && (
+      {step < 5 && (
         <button onClick={handleNext} disabled={!canProceed()}
-          className={`rounded-full px-5 py-1.5 text-sm font-semibold transition-all ${canProceed() ? "bg-[#674BB3] text-white hover:bg-[#563AA4]" : "bg-gray-200 text-gray-400 cursor-not-allowed"
+          className={`rounded-full px-5 py-1.5 text-sm font-semibold transition-all ${canProceed() ? "bg-[#674BB3] text-white hover:bg-onc-hover" : "bg-gray-200 text-gray-400 cursor-not-allowed"
             }`}>
           ถัดไป
         </button>
       )}
-      {step === 4 && (
+      {step === 5 && (
         <>
-          <button onClick={() => setShowPreview(true)}
-            className="text-sm font-semibold text-[#404040] border border-gray-200 rounded-full px-5 py-1.5 hover:bg-gray-50 transition-colors flex items-center gap-1.5">
-            <Eye size={14} /> Preview
-          </button>
           <div className="relative">
             <button onClick={() => setShowSignModal(!showSignModal)}
-              className="rounded-full px-5 py-1.5 text-sm font-semibold flex items-center gap-1.5 bg-[#674BB3] text-white hover:bg-[#563AA4] transition-all">
+              className="rounded-full px-5 py-1.5 text-sm font-semibold flex items-center gap-1.5 bg-[#674BB3] text-white hover:bg-onc-hover transition-all">
               <ClipboardCheck size={14} /> ยืนยันคำสั่งยา
             </button>
             {showSignModal && (
               <>
                 <div className="fixed inset-0 z-40" onClick={() => { setShowSignModal(false); setPin(""); setPinError(false); }} />
-                <div className="absolute right-0 top-full mt-2 z-50 bg-white rounded-2xl shadow-2xl border border-gray-200 p-4 w-72">
-                  <p className="text-sm font-bold text-[#404040] mb-3">กรอก PIN เพื่อยืนยัน</p>
-                  <input type="password" maxLength={6} value={pin} onChange={e => { setPin(e.target.value); setPinError(false); }}
-                    placeholder="PIN 4-6 หลัก" autoFocus
-                    onKeyDown={e => { if (e.key === "Enter") handleSign(); }}
-                    className="border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:border-[#674BB3] focus:ring-1 focus:ring-[#674BB3] outline-none w-full" />
-                  {pinError && <p className="text-xs text-red-600 font-semibold mt-1">PIN ไม่ถูกต้อง</p>}
-                  <button onClick={handleSign} disabled={pin.length < 4 || hasHardStop}
-                    className={`w-full mt-3 rounded-xl px-4 py-2 text-sm font-semibold flex items-center justify-center gap-2 transition-colors ${pin.length >= 4 && !hasHardStop ? "bg-[#674BB3] text-white hover:bg-[#563AA4]" : "bg-gray-200 text-gray-400 cursor-not-allowed"
+                <div className="absolute right-0 top-full mt-2 z-50 bg-white rounded-2xl shadow-2xl border border-gray-200 p-5 w-80">
+                  <p className="text-sm font-bold text-[#404040] mb-1 text-center">ลงนามคำสั่งยา</p>
+                  <p className="text-xs text-[#898989] mb-4 text-center">กรอก PIN 6 หลักเพื่อลงนามคำสั่งยา</p>
+                  <div className="flex justify-center gap-2 mb-4 cursor-text" onClick={() => (document.getElementById("pin-input-1") as HTMLInputElement)?.focus()}>
+                    {Array.from({ length: 6 }, (_, i) => (
+                      <div key={i} className={`w-9 h-9 rounded-lg border-2 flex items-center justify-center text-lg font-bold transition-all ${
+                        i < pin.length ? "border-onc bg-onc/5 text-onc" : i === pin.length ? "border-onc/50" : "border-gray-200"
+                      }`}>{i < pin.length ? "●" : ""}</div>
+                    ))}
+                  </div>
+                  <input id="pin-input-1" type="password" inputMode="numeric" maxLength={6} value={pin}
+                    onChange={e => { setPin(e.target.value.replace(/\D/g, "").slice(0, 6)); setPinError(false); }}
+                    onKeyDown={e => { if (e.key === "Enter" && pin.length === 6) handleSign(); }}
+                    autoFocus className="sr-only" />
+                  {pinError && <p className="text-xs text-red-600 font-semibold mb-3 text-center">PIN ไม่ถูกต้อง — ลองอีกครั้ง</p>}
+                  <button onClick={handleSign} disabled={pin.length < 6 || hasHardStop}
+                    className={`w-full rounded-xl px-4 py-2.5 text-sm font-semibold flex items-center justify-center gap-2 transition-colors ${pin.length >= 6 && !hasHardStop ? "bg-[#674BB3] text-white hover:bg-onc-hover" : "bg-gray-200 text-gray-400 cursor-not-allowed"
                       }`}>
                     <ClipboardCheck size={14} /> ยืนยัน
                   </button>
@@ -938,7 +1427,7 @@ export default function OrderEntry({ embedded = false, patientHN, onStepChange, 
   /* ── Embedded mode: stepper → title+buttons → content ── */
   if (embedded) return (
     <>
-      <div className="rounded-2xl border-[0.1px] border-[#d9d9d9]/25 p-5 mb-5 sticky top-0 z-10 backdrop-blur-md bg-white/70" style={{ boxShadow: "0 1px 4px rgba(0,0,0,0.04)" }}>
+      <div className="rounded-2xl border-[0.1px] border-border-card p-5 mb-5 sticky top-0 z-10 backdrop-blur-md bg-white/70" style={{ boxShadow: "0 1px 4px rgba(0,0,0,0.04)" }}>
         <OrderStepper step={step} onStepClick={(s) => { if (s <= step) setStep(s); }} />
       </div>
       <div className="flex items-center justify-between mb-5">
@@ -950,97 +1439,7 @@ export default function OrderEntry({ embedded = false, patientHN, onStepChange, 
       </div>
       {wizardSteps}
 
-      {/* Preview modal — needs to be inside embedded return */}
-      {showPreview && patient && protocol && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-8">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden">
-            {/* Modal header */}
-            <div className="px-6 py-4 flex items-center justify-between border-b shrink-0">
-              <div>
-                <p className="font-bold text-[#404040]">Preview ใบสั่งยา</p>
-                <p className="text-xs text-[#898989]">{patient.name} · {protocol.code} · Cycle {cycle}</p>
-              </div>
-              <div className="flex items-center gap-3">
-                <button onClick={() => window.print()}
-                  className="text-sm font-semibold text-[#674BB3] border border-[#674BB3]/30 rounded-full px-4 py-1.5 hover:bg-[#674BB3]/5 transition-colors flex items-center gap-1.5">
-                  <Printer size={14} /> พิมพ์
-                </button>
-                <button onClick={() => setShowPreview(false)}
-                  className="text-sm font-semibold text-[#898989] hover:text-[#404040] transition-colors">
-                  ✕
-                </button>
-              </div>
-            </div>
-            {/* Document content */}
-            <div className="flex-1 overflow-y-auto p-8 bg-gray-100">
-              <div className="mx-auto bg-white shadow-lg p-8" style={{ width: 595, minHeight: 842, aspectRatio: "1 / 1.4142" }}>
-                <div className="flex justify-between items-start mb-4 border-b-2 border-[#674BB3] pb-3">
-                  <div>
-                    <h1 className="text-sm font-bold text-[#674BB3]">โรงพยาบาลตัวอย่าง</h1>
-                    <p className="text-[10px] text-[#898989]">คลินิกเคมีบำบัด / Chemotherapy Clinic</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-[10px] font-bold text-red-600">ใบสั่งยาเคมีบำบัด</p>
-                    <p className="text-[10px] text-[#898989]">เลขที่: <span className="font-mono font-bold text-[#404040]">{orderNo || "DRAFT"}</span></p>
-                  </div>
-                </div>
-                <div className="border border-gray-300 rounded-lg p-2 mb-3 text-[10px]">
-                  <div className="grid grid-cols-4 gap-1">
-                    <div className="col-span-2"><span className="text-[#898989]">ชื่อ-สกุล: </span><span className="font-bold">{patient.name}</span></div>
-                    <div><span className="text-[#898989]">HN: </span><span className="font-bold">{patient.hn}</span></div>
-                    <div><span className="text-[#898989]">เพศ: </span><span className="font-bold">{patient.gender}</span></div>
-                  </div>
-                  <div className="grid grid-cols-4 gap-1 mt-1">
-                    <div><span className="text-[#898989]">BW: </span><span className="font-bold">{wt} kg</span></div>
-                    <div><span className="text-[#898989]">BSA: </span><span className="font-bold">{bsa} m²</span></div>
-                    <div><span className="text-[#898989]">CrCl: </span><span className="font-bold">{patient.crcl} mL/min</span></div>
-                    <div><span className="text-[#898989]">ECOG: </span><span className="font-bold">{ecog}</span></div>
-                  </div>
-                </div>
-                <div className="border border-gray-300 rounded-lg p-2 mb-3 text-[10px] flex flex-wrap gap-3">
-                  <div><span className="text-[#898989]">Protocol: </span><span className="font-bold text-[#674BB3] text-xs">{protocol.code}</span></div>
-                  <div><span className="text-[#898989]">Cycle </span><span className="font-bold text-xs">{cycle}/{protocol.totalCycles}</span></div>
-                  <div><span className="text-[#898989]">วันให้ยา: </span><span className="font-bold">{appointDate}</span></div>
-                  <div><span className="text-[#898989]">Dose: </span><span className="font-bold text-emerald-600">{doseReduction}%</span></div>
-                </div>
-                <table className="w-full text-[10px] border border-gray-300 mb-8">
-                  <thead>
-                    <tr className="bg-gray-50 text-[#898989]">
-                      <th className="border border-gray-300 px-2 py-1 text-left">ประเภท</th>
-                      <th className="border border-gray-300 px-2 py-1 text-left">ชื่อยา</th>
-                      <th className="border border-gray-300 px-2 py-1 text-right">ขนาด</th>
-                      <th className="border border-gray-300 px-2 py-1 text-center">Route</th>
-                      <th className="border border-gray-300 px-2 py-1 text-left">Diluent</th>
-                      <th className="border border-gray-300 px-2 py-1 text-center">เวลาให้ยา</th>
-                      <th className="border border-gray-300 px-2 py-1 text-center">Day</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {orderLines.map((d, i) => (
-                      <tr key={i}>
-                        <td className="border border-gray-300 px-2 py-1.5">
-                          <span className={d.classification === "premedication" ? "text-blue-700" : "text-red-700"}>{d.classification === "premedication" ? "Pre-med" : "Chemo"}</span>
-                        </td>
-                        <td className="border border-gray-300 px-2 py-1.5 font-bold">{d.name}</td>
-                        <td className="border border-gray-300 px-2 py-1.5 text-right font-bold">{d.finalDose} {d.unit}</td>
-                        <td className="border border-gray-300 px-2 py-1.5 text-center">{d.route}</td>
-                        <td className="border border-gray-300 px-2 py-1.5 text-[#898989]">{d.diluent}</td>
-                        <td className="border border-gray-300 px-2 py-1.5 text-center">{d.rate}</td>
-                        <td className="border border-gray-300 px-2 py-1.5 text-center">D{d.day}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-                <div className="grid grid-cols-3 gap-6 text-center text-[10px] border-t-2 border-gray-400 pt-4">
-                  <div><p className="font-bold mb-6">แพทย์ผู้สั่งยา</p><div className="border-b border-dotted border-gray-400 mb-1" /><p className="text-[#898989]">วันที่: {appointDate}</p></div>
-                  <div><p className="font-bold mb-6">เภสัชกรผู้ตรวจสอบ</p><div className="border-b border-dotted border-gray-400 mb-1" /><p className="text-[#898989]">วันที่: ................</p></div>
-                  <div><p className="font-bold mb-6">พยาบาลผู้ให้ยา</p><div className="border-b border-dotted border-gray-400 mb-1" /><p className="text-[#898989]">วันที่: ................</p></div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      {previewModal}
     </>
   );
 
@@ -1049,7 +1448,8 @@ export default function OrderEntry({ embedded = false, patientHN, onStepChange, 
     1: { title: "ประเมิน ECOG", text: "ประเมินสมรรถภาพร่างกายผู้ป่วยก่อนเริ่มให้ยาเคมีบำบัด" },
     2: { title: "เลือก Protocol", text: "เลือกสูตรเคมีบำบัดที่เหมาะสมกับการวินิจฉัย" },
     3: { title: "คำนวณขนาดยา", text: "ระบบคำนวณขนาดยาจาก BSA อัตโนมัติ สามารถปรับลดขนาดยาได้ตามความเหมาะสม" },
-    4: { title: "ตรวจสอบ & Sign", text: "ตรวจสอบรายการยาและลงนามคำสั่งยาเคมีบำบัด" },
+    4: { title: "กำหนดการให้ยา", text: "กำหนดวันนัดให้ยาและบันทึกทางคลินิก" },
+    5: { title: "ตรวจสอบ", text: "ตรวจสอบรายการยาและลงนามคำสั่งยาเคมีบำบัด" },
   };
 
   /* ── Standalone mode: full layout ── */
@@ -1071,7 +1471,7 @@ export default function OrderEntry({ embedded = false, patientHN, onStepChange, 
       {/* ── Main content + Tip sidebar ── */}
       <div className="flex gap-4 flex-1 min-h-0">
         {/* Main content card */}
-        <div className="flex-1 min-w-0 bg-white rounded-2xl border-[0.1px] border-[#d9d9d9]/25 overflow-y-auto" style={{ boxShadow: "0 1px 4px rgba(0,0,0,0.04)" }}>
+        <div className="flex-1 min-w-0 bg-white rounded-2xl border-[0.1px] border-border-card overflow-y-auto" style={{ boxShadow: "0 1px 4px rgba(0,0,0,0.04)" }}>
           <div className="p-6">
             <div className="flex items-center justify-between mb-5">
               <OrderStepper step={step} onStepClick={(s) => { if (s <= step) setStep(s); }} />
@@ -1084,7 +1484,7 @@ export default function OrderEntry({ embedded = false, patientHN, onStepChange, 
         {/* Right sidebar — tip + patient info */}
         <div className="w-64 shrink-0 overflow-y-auto space-y-3">
           {/* Contextual tip */}
-          <div className="bg-white rounded-2xl border-[0.1px] border-[#d9d9d9]/25 p-4" style={{ boxShadow: "0 1px 4px rgba(0,0,0,0.04)" }}>
+          <div className="bg-white rounded-2xl border-[0.1px] border-border-card p-4" style={{ boxShadow: "0 1px 4px rgba(0,0,0,0.04)" }}>
             <div className="flex items-center gap-2 mb-2">
               <div className="w-6 h-6 rounded-full bg-amber-100 flex items-center justify-center">
                 <Info size={12} className="text-amber-600" />
@@ -1107,7 +1507,7 @@ export default function OrderEntry({ embedded = false, patientHN, onStepChange, 
 
           {/* Lab summary */}
           {patient && (
-            <div className="bg-white rounded-2xl border-[0.1px] border-[#d9d9d9]/25 p-4" style={{ boxShadow: "0 1px 4px rgba(0,0,0,0.04)" }}>
+            <div className="bg-white rounded-2xl border-[0.1px] border-border-card p-4" style={{ boxShadow: "0 1px 4px rgba(0,0,0,0.04)" }}>
               <h3 className="text-xs font-bold text-[#404040] mb-2.5">Lab ล่าสุด</h3>
               <div className="space-y-1.5">
                 {labs.map(l => {
@@ -1135,7 +1535,7 @@ export default function OrderEntry({ embedded = false, patientHN, onStepChange, 
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center">
           <div className="bg-white rounded-2xl w-full max-w-md p-6 shadow-2xl">
             <div className="text-center mb-5">
-              <div className="w-14 h-14 rounded-full bg-[#674BB3]/10 flex items-center justify-center mx-auto mb-3">
+              <div className="w-14 h-14 rounded-full bg-onc/10 flex items-center justify-center mx-auto mb-3">
                 <ClipboardCheck size={24} className="text-[#674BB3]" />
               </div>
               <h2 className="text-lg font-bold text-[#404040]">ยืนยันลงนามคำสั่งยา</h2>
@@ -1151,15 +1551,25 @@ export default function OrderEntry({ embedded = false, patientHN, onStepChange, 
 
             <div className="space-y-3 text-sm mb-4">
               <div className="flex justify-between"><span className="text-[#898989]">รายการยา</span><span className="font-semibold text-[#404040]">{orderLines.length} รายการ</span></div>
-              <div className="flex justify-between"><span className="text-[#898989]">วันนัดให้ยา</span><span className="font-semibold text-[#404040]">{appointDate}</span></div>
+              <div className="flex justify-between"><span className="text-[#898989]">วันนัดให้ยา</span><span className="font-semibold text-[#404040]">{fmtDateTime}</span></div>
               <div className="flex justify-between"><span className="text-[#898989]">ปรับขนาดยา</span><span className="font-semibold text-[#404040]">{doseReduction}%</span></div>
             </div>
 
             <div className="mb-4">
-              <label className="text-xs text-[#898989] mb-1 block">กรอก PIN เพื่อยืนยัน</label>
-              <input type="password" maxLength={6} value={pin} onChange={e => { setPin(e.target.value); setPinError(false); }}
-                placeholder="PIN 4-6 หลัก" className={inputCls} autoFocus />
-              {pinError && <p className="text-xs text-red-600 font-semibold mt-1">PIN ไม่ถูกต้อง — ลองอีกครั้ง</p>}
+              <p className="text-sm font-bold text-[#404040] mb-1 text-center">ลงนามคำสั่งยา</p>
+              <p className="text-xs text-[#898989] mb-4 text-center">กรอก PIN 6 หลักเพื่อลงนามคำสั่งยา</p>
+              <div className="flex justify-center gap-2 mb-4 cursor-text" onClick={() => (document.getElementById("pin-input-2") as HTMLInputElement)?.focus()}>
+                {Array.from({ length: 6 }, (_, i) => (
+                  <div key={i} className={`w-9 h-9 rounded-lg border-2 flex items-center justify-center text-lg font-bold transition-all ${
+                    i < pin.length ? "border-onc bg-onc/5 text-onc" : "border-gray-200"
+                  }`}>{i < pin.length ? "●" : ""}</div>
+                ))}
+              </div>
+              <input id="pin-input-2" type="password" inputMode="numeric" maxLength={6} value={pin}
+                onChange={e => { setPin(e.target.value.replace(/\D/g, "").slice(0, 6)); setPinError(false); }}
+                onKeyDown={e => { if (e.key === "Enter" && pin.length === 6) handleSign(); }}
+                autoFocus className="sr-only" />
+              {pinError && <p className="text-xs text-red-600 font-semibold mb-3 text-center">PIN ไม่ถูกต้อง — ลองอีกครั้ง</p>}
             </div>
 
             <div className="flex gap-3">
@@ -1167,8 +1577,8 @@ export default function OrderEntry({ embedded = false, patientHN, onStepChange, 
                 className="flex-1 border border-gray-200 rounded-xl px-4 py-2.5 text-sm font-semibold text-[#404040] hover:bg-gray-50 transition-colors">
                 ยกเลิก
               </button>
-              <button onClick={handleSign} disabled={pin.length < 4 || hasHardStop}
-                className={`flex-1 rounded-xl px-4 py-2.5 text-sm font-semibold flex items-center justify-center gap-2 transition-colors ${pin.length >= 4 && !hasHardStop ? "bg-[#674BB3] text-white hover:bg-[#563AA4]" : "bg-gray-200 text-gray-400 cursor-not-allowed"
+              <button onClick={handleSign} disabled={pin.length < 6 || hasHardStop}
+                className={`flex-1 rounded-xl px-4 py-2.5 text-sm font-semibold flex items-center justify-center gap-2 transition-colors ${pin.length >= 6 && !hasHardStop ? "bg-[#674BB3] text-white hover:bg-onc-hover" : "bg-gray-200 text-gray-400 cursor-not-allowed"
                   }`}>
                 <ClipboardCheck size={14} /> ยืนยัน Sign Order
               </button>
@@ -1177,219 +1587,7 @@ export default function OrderEntry({ embedded = false, patientHN, onStepChange, 
         </div>
       )}
 
-      {showPreview && patient && protocol && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex flex-col">
-          {/* Top bar */}
-          <div className="bg-white px-6 py-3 flex items-center justify-between border-b shrink-0">
-            <div className="flex items-center gap-4">
-              <button onClick={() => setShowPreview(false)}
-                className="flex items-center gap-2 border border-gray-300 rounded-xl px-4 py-2 text-sm font-semibold text-[#404040] hover:bg-gray-50">
-                <ArrowLeft size={14} /> ย้อนกลับ
-              </button>
-              <div>
-                <p className="font-bold text-[#404040]">Preview ใบสั่งยา</p>
-                <p className="text-xs text-[#898989]">{patient.name} · {protocol.code} · Cycle {cycle}</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3">
-              <span className="text-xs text-[#898989]">A4 Portrait</span>
-              <button onClick={() => window.print()}
-                className="bg-[#674BB3] text-white font-semibold rounded-xl px-5 py-2.5 text-sm flex items-center gap-2 hover:bg-[#563AA4]">
-                <Printer size={14} /> พิมพ์ / บันทึก PDF
-              </button>
-            </div>
-          </div>
-
-          {/* Preview content */}
-          <div className="flex-1 overflow-y-auto bg-gray-200 p-8 flex justify-center">
-            <div className="bg-white shadow-2xl w-[794px] min-h-[1123px] p-12 print:shadow-none print:p-8" id="print-area">
-
-              {/* Hospital header */}
-              <div className="flex justify-between items-start mb-6 border-b-2 border-[#674BB3] pb-4">
-                <div>
-                  <h1 className="text-xl font-bold text-[#674BB3]">โรงพยาบาลตัวอย่าง</h1>
-                  <p className="text-xs text-[#898989]">คลินิกเคมีบำบัด / Chemotherapy Clinic</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-sm font-bold text-red-600">ใบสั่งยาเคมีบำบัด</p>
-                  <p className="text-xs text-[#898989]">เลขที่: <span className="font-mono font-bold text-[#404040]">{orderNo || generateOrderNo()}</span></p>
-                </div>
-              </div>
-
-              {/* Patient info */}
-              <div className="border border-gray-300 rounded-lg p-3 mb-4 text-xs">
-                <div className="grid grid-cols-4 gap-2">
-                  <div className="col-span-2">
-                    <span className="text-[#898989]">ชื่อ-สกุล: </span>
-                    <span className="font-bold text-[#404040]">{patient.name}</span>
-                  </div>
-                  <div><span className="text-[#898989]">HN: </span><span className="font-bold text-[#404040]">{patient.hn}</span></div>
-                  <div><span className="text-[#898989]">อายุ: </span><span className="font-bold text-[#404040]">{formatAge(patient.dob)} ({patient.gender})</span></div>
-                </div>
-                <div className="mt-1">
-                  <span className="text-[#898989]">Dx: </span>
-                  <span className="font-bold text-[#404040]">{patient.diagnosis} ({patient.icd10})</span>
-                </div>
-                <div className="grid grid-cols-4 gap-2 mt-1">
-                  <div><span className="text-[#898989]">BW: </span><span className="font-bold">{wt} kg</span></div>
-                  <div><span className="text-[#898989]">BSA: </span><span className="font-bold">{bsa} m²</span></div>
-                  <div><span className="text-[#898989]">CrCl: </span><span className="font-bold">{patient.crcl} mL/min</span></div>
-                  <div><span className="text-[#898989]">ECOG: </span><span className="font-bold">{ecog}</span></div>
-                </div>
-              </div>
-
-              {/* Protocol info */}
-              <div className="border border-gray-300 rounded-lg p-3 mb-4 text-xs flex flex-wrap gap-4">
-                <div><span className="text-[#898989]">Protocol: </span><span className="font-bold text-[#674BB3] text-sm">{protocol.code}</span></div>
-                <div><span className="text-[#898989]">Cycle </span><span className="font-bold text-sm">{cycle}/{protocol.totalCycles}</span></div>
-                <div><span className="text-[#898989]">วันให้ยา: </span><span className="font-bold">{appointDate}</span></div>
-                <div><span className="text-[#898989]">Dose Reduction: </span><span className="font-bold text-emerald-600">{doseReduction}%</span></div>
-                <div className="text-[#898989]">{protocol.drugs.filter(d => d.classification === "chemotherapy").map(d => d.name).join(" + ")}</div>
-              </div>
-
-              {/* Lab snapshot */}
-              <div className="border border-gray-300 rounded-lg p-3 mb-4">
-                <p className="text-[10px] text-[#898989] mb-1.5">Lab ก่อนให้ยา:</p>
-                <div className="flex flex-wrap gap-1.5">
-                  {labs.map(l => {
-                    const s = labStatus(l);
-                    return (
-                      <span key={l.name} className={`text-[10px] border rounded px-2 py-0.5 font-medium ${s === "danger" ? "border-red-300 bg-red-50 text-red-700" :
-                        s === "warn" ? "border-amber-300 bg-amber-50 text-amber-700" :
-                          "border-gray-300 text-[#404040]"
-                        }`}>
-                        {l.name}: <b>{l.value}</b> {l.unit}
-                      </span>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Premedication table */}
-              {orderLines.some(d => d.classification === "premedication") && (
-                <div className="mb-4">
-                  <div className="bg-blue-50 border border-blue-200 px-3 py-1 text-xs font-bold text-blue-700">
-                    Premedication / ยาก่อนให้เคมีบำบัด
-                  </div>
-                  <table className="w-full text-xs border border-gray-300">
-                    <thead>
-                      <tr className="bg-gray-50 text-[#898989]">
-                        <th className="border border-gray-300 px-2 py-1 text-left">#</th>
-                        <th className="border border-gray-300 px-2 py-1 text-left">ชื่อยา</th>
-                        <th className="border border-gray-300 px-2 py-1 text-right">ขนาด</th>
-                        <th className="border border-gray-300 px-2 py-1 text-center">Route</th>
-                        <th className="border border-gray-300 px-2 py-1 text-left">Diluent / Vol</th>
-                        <th className="border border-gray-300 px-2 py-1 text-center">เวลาให้ยา</th>
-                        <th className="border border-gray-300 px-2 py-1 text-center">Day</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {orderLines.filter(d => d.classification === "premedication").map((d, i) => (
-                        <tr key={i}>
-                          <td className="border border-gray-300 px-2 py-1.5 text-[#898989]">{i + 1}</td>
-                          <td className="border border-gray-300 px-2 py-1.5 font-medium text-[#404040]">{d.name}</td>
-                          <td className="border border-gray-300 px-2 py-1.5 text-right text-blue-700 font-bold">{d.finalDose} {d.unit}</td>
-                          <td className="border border-gray-300 px-2 py-1.5 text-center">{d.route}</td>
-                          <td className="border border-gray-300 px-2 py-1.5 text-[#898989]">{d.diluent}</td>
-                          <td className="border border-gray-300 px-2 py-1.5 text-center text-[#898989]">{d.rate}</td>
-                          <td className="border border-gray-300 px-2 py-1.5 text-center">D{d.day}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-
-              {/* Chemotherapy table */}
-              <div className="mb-4">
-                <div className="bg-red-50 border border-red-200 px-3 py-1 text-xs font-bold text-red-700">
-                  ยาเคมีบำบัด (Chemotherapy Drugs)
-                </div>
-                <table className="w-full text-xs border border-gray-300">
-                  <thead>
-                    <tr className="bg-gray-50 text-[#898989]">
-                      <th className="border border-gray-300 px-2 py-1 text-left">#</th>
-                      <th className="border border-gray-300 px-2 py-1 text-left">ชื่อยา</th>
-                      <th className="border border-gray-300 px-2 py-1 text-right">ขนาดคำนวณ</th>
-                      <th className="border border-gray-300 px-2 py-1 text-right font-bold">ขนาดจริง</th>
-                      <th className="border border-gray-300 px-2 py-1 text-center">Route</th>
-                      <th className="border border-gray-300 px-2 py-1 text-left">Diluent / Vol</th>
-                      <th className="border border-gray-300 px-2 py-1 text-center">Conc.</th>
-                      <th className="border border-gray-300 px-2 py-1 text-center">Rate</th>
-                      <th className="border border-gray-300 px-2 py-1 text-center">เวลาให้ยา</th>
-                      <th className="border border-gray-300 px-2 py-1 text-center">Day</th>
-                      <th className="border border-gray-300 px-2 py-1 text-center">Flag</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {orderLines.filter(d => d.classification === "chemotherapy").map((d, i) => {
-                      const dilVol = parseInt(d.diluent.match(/\d+/)?.[0] ?? "0");
-                      const conc = dilVol > 0 ? (d.finalDose / dilVol).toFixed(2) : "—";
-                      const rateVal = dilVol > 0 && d.rate.includes("hr") ? Math.round(dilVol / parseFloat(d.rate)) : "—";
-                      return (
-                        <tr key={i}>
-                          <td className="border border-gray-300 px-2 py-1.5 text-[#898989]">{d.seq}</td>
-                          <td className="border border-gray-300 px-2 py-1.5 font-bold text-[#404040]">{d.name}</td>
-                          <td className="border border-gray-300 px-2 py-1.5 text-right text-[#898989]">{d.calcDose} {d.unit}</td>
-                          <td className="border border-gray-300 px-2 py-1.5 text-right text-red-600 font-bold text-sm">{d.finalDose}</td>
-                          <td className="border border-gray-300 px-2 py-1.5 text-center">{d.route}</td>
-                          <td className="border border-gray-300 px-2 py-1.5 text-[#898989]">{d.diluent}</td>
-                          <td className="border border-gray-300 px-2 py-1.5 text-center text-[#898989]">{conc} mg/mL</td>
-                          <td className="border border-gray-300 px-2 py-1.5 text-center text-[#898989]">{rateVal} mL/hr</td>
-                          <td className="border border-gray-300 px-2 py-1.5 text-center text-[#898989]">{d.rate}</td>
-                          <td className="border border-gray-300 px-2 py-1.5 text-center">D{d.day}</td>
-                          <td className="border border-gray-300 px-2 py-1.5 text-center">
-                            {d.edited && <span className="text-amber-600">✎</span>}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-
-              {/* Calculation info + Protocol ref */}
-              <div className="grid grid-cols-2 gap-4 mb-8 text-xs">
-                <div className="border border-gray-300 rounded-lg p-3">
-                  <p className="font-bold text-[#404040] mb-1">ข้อมูลการคำนวณ</p>
-                  <p className="text-[#898989]">BSA: <b>{bsa} m²</b> · BW: <b>{wt} kg</b></p>
-                  <p className="text-[#898989]">Dose Reduction: <b className="text-emerald-600">{doseReduction}%</b></p>
-                </div>
-                <div className="border border-gray-300 rounded-lg p-3">
-                  <p className="font-bold text-[#404040] mb-1">Protocol Reference</p>
-                  <p className="text-[#898989]">{protocol.drugs.filter(d => d.classification === "chemotherapy").map(d => d.name).join(" + ")}</p>
-                  <p className="text-[#898989]">q{protocol.cycleDays}d · Cycle {cycle} · {protocol.cancer}</p>
-                </div>
-              </div>
-
-              {/* Signature section */}
-              <div className="grid grid-cols-3 gap-8 text-center text-xs border-t-2 border-gray-400 pt-6 mt-8">
-                <div>
-                  <p className="font-bold text-[#404040] mb-8">แพทย์ผู้สั่งยา</p>
-                  <div className="border-b border-dotted border-gray-400 mb-1" />
-                  <p className="text-[#898989]">นพ.สมชาย รักษาดี</p>
-                  <p className="text-[#898989]">วันที่: {appointDate}</p>
-                </div>
-                <div>
-                  <p className="font-bold text-[#404040] mb-8">เภสัชกรผู้ตรวจสอบ</p>
-                  <div className="border-b border-dotted border-gray-400 mb-1" />
-                  <p className="text-[#898989]">วันที่: ................</p>
-                </div>
-                <div>
-                  <p className="font-bold text-[#404040] mb-8">พยาบาลผู้ให้ยา</p>
-                  <div className="border-b border-dotted border-gray-400 mb-1" />
-                  <p className="text-[#898989]">วันที่: ................</p>
-                </div>
-              </div>
-
-              {/* Footer */}
-              <p className="text-center text-[8px] text-[#898989] mt-6">
-                สั่งพิมพ์: {new Date().toLocaleDateString("th-TH")} · ระบบบริหารจัดการยาเคมีบำบัด · โรงพยาบาลตัวอย่าง · {orderNo || "DRAFT"}
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
+      {previewModal}
     </div>
   );
 }

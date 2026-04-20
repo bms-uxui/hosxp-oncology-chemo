@@ -1,14 +1,17 @@
 import { useState, useRef } from "react";
 import { useNavigate, useParams } from "react-router";
 import { Tabs, Tab, Breadcrumbs, BreadcrumbItem, Tooltip as HeroTooltip } from "@heroui/react";
-import { Activity, Weight, HeartPulse, Wind, Calendar } from "lucide-react";
+import { Activity, Weight, HeartPulse, Wind, Calendar, Printer, X, Download } from "lucide-react";
 import PatientAvatar from "../../components/onc/PatientAvatar";
 import CancerProfileBanner from "../../components/onc/CancerProfileBanner";
 import RegimenCard from "../../components/onc/RegimenCard";
 import LabTrendCard from "../../components/onc/LabTrendCard";
 import LabResultsTable from "../../components/onc/LabResultsTable";
 import TreatmentHistory from "../../components/onc/TreatmentHistory";
+import type { HistoryEvent } from "../../components/onc/TreatmentHistory";
 import OrderEntry from "./OrderEntry";
+import PharmVerify from "./PharmVerify";
+import { useOnc } from "../../components/onc/OncContext";
 
 /* ══════════════════════════════════════════════
    Patient Summary — Clean card-based layout
@@ -78,15 +81,17 @@ const labTrendData = [
 
 const sideCard = "bg-white rounded-2xl p-5";
 
-type PageTab = "overview" | "treatment" | "order";
-type OrderStep = "step1" | "step2" | "step3" | "step4";
+type PageTab = "overview" | "treatment" | "order" | "pharm";
+type OrderStep = "step1" | "step2" | "step3" | "step4" | "step5";
 
 export default function PatientSummary() {
   const navigate = useNavigate();
   const { hn } = useParams<{ hn: string }>();
+  const { orderHistory, role } = useOnc();
   const pt = allPatients.find(p => p.hn === hn) ?? allPatients[0];
   const [tab, setTab] = useState<PageTab>("overview");
   const [orderStep, setOrderStep] = useState<OrderStep>("step1");
+  const [viewEvent, setViewEvent] = useState<HistoryEvent | null>(null);
   const orderNavRef = useRef<{ next: () => void; back: () => void; canProceed: boolean; step: number } | null>(null);
   const [, forceUpdate] = useState(0);
 
@@ -115,7 +120,7 @@ export default function PatientSummary() {
       <div className="flex gap-4 flex-1 min-h-0">
 
         {/* ════════ LEFT PANEL — Profile ════════ */}
-        <div className="w-80 min-w-[320px] max-w-[320px] shrink-0 overflow-y-auto space-y-4">
+        <div className="w-80 min-w-[320px] max-w-[320px] shrink-0 overflow-y-auto overflow-x-hidden space-y-4 rounded-2xl">
           {/* Profile header */}
           <div className={sideCard} style={{ boxShadow: "0 1px 4px rgba(0,0,0,0.04)" }}>
             <div className="flex items-center gap-3">
@@ -147,6 +152,26 @@ export default function PatientSummary() {
               <div className="flex justify-between">
                 <span className="text-[#898989]">หอผู้ป่วย</span>
                 <span className="font-semibold text-[#404040]">{pt.ward}</span>
+              </div>
+            </div>
+
+            {/* Clinical parameters */}
+            <div className="mt-3 pt-3 border-t border-gray-100 space-y-3 text-sm">
+              <div className="flex justify-between">
+                <span className="text-[#898989]">BW / HT</span>
+                <span className="font-semibold text-[#404040]">{pt.weight} kg / {pt.height} cm</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-[#898989]">BSA</span>
+                <span className="font-bold text-onc">{pt.bsa} m²</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-[#898989]">CrCl</span>
+                <span className="font-semibold text-[#404040]">{pt.crcl} mL/min</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-[#898989]">ECOG</span>
+                <span className="font-semibold text-[#404040]">{pt.ecog}</span>
               </div>
             </div>
           </div>
@@ -303,7 +328,8 @@ export default function PatientSummary() {
               <Tabs selectedKey={tab} onSelectionChange={(k) => { setTab(k as PageTab); if (k === "order") setOrderStep("step1"); }} variant="underlined" size="lg"
                 classNames={{ tabList: "gap-6", tab: "px-1 text-sm font-semibold", cursor: "bg-[#674BB3] h-[2px]" }}>
                 <Tab key="overview" title="ภาพรวม" />
-                <Tab key="order" title="สั่งยาเคมีบำบัด" />
+                {role === "ONC_DOCTOR" && <Tab key="order" title="สั่งยาเคมีบำบัด" />}
+                {role === "ONC_PHARMACIST" && <Tab key="pharm" title="ตรวจสอบ/เตรียมยา" />}
                 <Tab key="treatment" title="ประวัติการรักษา" />
               </Tabs>
             </div>
@@ -362,21 +388,81 @@ export default function PatientSummary() {
           {/* ══ TAB: ประวัติการรักษา ══ */}
           {tab === "treatment" && (<>
             <TreatmentHistory events={[
-              { date: "16/03/2569", cycle: "C3D1", regimen: pt.regimen, status: "current", doctor: pt.doctor,
+              /* ── Dynamic entries from signed orders ── */
+              ...orderHistory
+                .filter(o => o.hn === pt.hn)
+                .map(o => ({
+                  date: o.date,
+                  cycle: o.cycle,
+                  regimen: o.regimen,
+                  status: "current" as const,
+                  doctor: o.doctor,
+                  drugs: o.drugs,
+                  labs: { anc: 0, plt: 0, hb: 0 },
+                  note: `สั่งยาสำเร็จ — รอเภสัชกรตรวจสอบ`,
+                  orderNo: o.orderNo,
+                  doseReduction: o.doseReduction,
+                  sideEffects: [],
+                  workflow: [
+                    { key: "order" as const, label: "แพทย์สั่งยา", status: "done" as const, date: o.date, by: o.doctor },
+                    { key: "verify" as const, label: "เภสัชตรวจสอบ", status: "active" as const, note: "รอตรวจสอบ" },
+                    { key: "compound" as const, label: "เตรียมยา", status: "pending" as const },
+                    { key: "administer" as const, label: "ให้ยา", status: "pending" as const },
+                    { key: "done" as const, label: "เสร็จสิ้น", status: "pending" as const },
+                  ],
+                })),
+              /* ── Static: current cycle awaiting chemo ── */
+              { date: "16/03/2569", cycle: "C3D1", regimen: pt.regimen, status: "current" as const, doctor: pt.doctor,
+                orderNo: "ONC-2569-0045",
                 drugs: [{ name: "Cyclophosphamide", dose: "840 mg", route: "IV", duration: "30 นาที" }, { name: "Doxorubicin", dose: "66 mg", route: "IV push", duration: "15 นาที" }, { name: "5-Fluorouracil", dose: "840 mg", route: "IV", duration: "60 นาที" }],
-                labs: { anc: 2.1, plt: 185, hb: 11.2 }, note: "รอผล Lab ก่อนให้ยา", sideEffects: [] },
-              { date: "23/02/2569", cycle: "C2D1", regimen: pt.regimen, status: "done", doctor: pt.doctor,
+                labs: { anc: 2.1, plt: 185, hb: 11.2 }, note: "Lab ผ่านเกณฑ์ — กำลังเตรียมยา", sideEffects: [],
+                workflow: [
+                  { key: "order" as const, label: "แพทย์สั่งยา", status: "done" as const, date: "16/03", by: pt.doctor },
+                  { key: "verify" as const, label: "เภสัชตรวจสอบ", status: "done" as const, date: "16/03", by: "ภก.วิไล ใจดี" },
+                  { key: "compound" as const, label: "เตรียมยา", status: "active" as const, note: "กำลังเตรียมผสม" },
+                  { key: "administer" as const, label: "ให้ยา", status: "pending" as const },
+                  { key: "done" as const, label: "เสร็จสิ้น", status: "pending" as const },
+                ],
+              },
+              /* ── Static: completed C2 ── */
+              { date: "23/02/2569", cycle: "C2D1", regimen: pt.regimen, status: "done" as const, doctor: pt.doctor,
+                orderNo: "ONC-2569-0032",
                 drugs: [{ name: "Cyclophosphamide", dose: "840 mg", route: "IV", duration: "30 นาที" }, { name: "Doxorubicin", dose: "66 mg", route: "IV push", duration: "15 นาที" }, { name: "5-Fluorouracil", dose: "840 mg", route: "IV", duration: "60 นาที" }],
-                labs: { anc: 2.8, plt: 195, hb: 11.8 }, note: "ให้ยาครบ ไม่มีภาวะแทรกซ้อน", sideEffects: ["คลื่นไส้ G1", "เหนื่อยเพลีย G1"] },
-              { date: "08/02/2569", cycle: "C2D1", regimen: pt.regimen, status: "done", doctor: pt.doctor,
+                labs: { anc: 2.8, plt: 195, hb: 11.8 }, note: "ให้ยาครบ ไม่มีภาวะแทรกซ้อน", sideEffects: ["คลื่นไส้ G1", "เหนื่อยเพลีย G1"],
+                workflow: [
+                  { key: "order" as const, label: "แพทย์สั่งยา", status: "done" as const, date: "23/02", by: pt.doctor },
+                  { key: "verify" as const, label: "เภสัชตรวจสอบ", status: "done" as const, date: "23/02", by: "ภก.วิไล ใจดี" },
+                  { key: "compound" as const, label: "เตรียมยา", status: "done" as const, date: "23/02", by: "ชนม์ วงษ์ดี" },
+                  { key: "administer" as const, label: "ให้ยา", status: "done" as const, date: "23/02", by: "พว.อรุณ แสงทอง" },
+                  { key: "done" as const, label: "เสร็จสิ้น", status: "done" as const, date: "23/02" },
+                ],
+              },
+              /* ── Static: follow-up lab ── */
+              { date: "08/02/2569", cycle: "C2D1", regimen: pt.regimen, status: "done" as const, doctor: pt.doctor,
                 drugs: [], labs: { anc: 2.5, plt: 190, hb: 11.5 }, note: "Follow-up Lab — ผลปกติ พร้อมให้ยา C2", sideEffects: [] },
-              { date: "02/02/2569", cycle: "C1D1", regimen: pt.regimen, status: "done", doctor: pt.doctor,
+              /* ── Static: completed C1 ── */
+              { date: "02/02/2569", cycle: "C1D1", regimen: pt.regimen, status: "done" as const, doctor: pt.doctor,
+                orderNo: "ONC-2569-0018",
                 drugs: [{ name: "Cyclophosphamide", dose: "840 mg", route: "IV", duration: "30 นาที" }, { name: "Doxorubicin", dose: "66 mg", route: "IV push", duration: "15 นาที" }, { name: "5-Fluorouracil", dose: "840 mg", route: "IV", duration: "60 นาที" }],
-                labs: { anc: 3.2, plt: 210, hb: 12.1 }, note: "เริ่มให้ยาเคมีบำบัดครั้งแรก ไม่มี Reaction", sideEffects: ["ผมร่วง G1"] },
-              { date: "25/01/2569", cycle: "—", regimen: "—", status: "done", doctor: pt.doctor,
+                labs: { anc: 3.2, plt: 210, hb: 12.1 }, note: "เริ่มให้ยาเคมีบำบัดครั้งแรก ไม่มี Reaction", sideEffects: ["ผมร่วง G1"],
+                workflow: [
+                  { key: "order" as const, label: "แพทย์สั่งยา", status: "done" as const, date: "02/02", by: pt.doctor },
+                  { key: "verify" as const, label: "เภสัชตรวจสอบ", status: "done" as const, date: "02/02", by: "ภก.วิไล ใจดี" },
+                  { key: "compound" as const, label: "เตรียมยา", status: "done" as const, date: "02/02", by: "ชนม์ วงษ์ดี" },
+                  { key: "administer" as const, label: "ให้ยา", status: "done" as const, date: "02/02", by: "พว.อรุณ แสงทอง" },
+                  { key: "done" as const, label: "เสร็จสิ้น", status: "done" as const, date: "02/02" },
+                ],
+              },
+              /* ── Static: baseline ── */
+              { date: "25/01/2569", cycle: "—", regimen: "—", status: "done" as const, doctor: pt.doctor,
                 drugs: [], labs: { anc: 3.5, plt: 220, hb: 12.5 }, note: "Baseline Lab & ประเมิน ECOG ก่อนเริ่ม Chemo", sideEffects: [] },
-            ]} />
+            ]} onViewOrder={(evt) => setViewEvent(evt)} />
           </>)}
+
+          {/* ══ Pharm Mode ══ */}
+          {tab === "pharm" && (
+            <PharmVerify embedded patientHN={pt.hn} patientData={pt} />
+          )}
 
           {/* ══ Order Mode ══ */}
           {tab === "order" && (
@@ -386,13 +472,151 @@ export default function PatientSummary() {
               onNavUpdate={() => forceUpdate(n => n + 1)}
               controlledStep={parseInt(orderStep.replace("step", ""))}
               onStepChange={(s) => {
-                const map: Record<number, OrderStep> = { 1: "step1", 2: "step2", 3: "step3", 4: "step4" };
+                const map: Record<number, OrderStep> = { 1: "step1", 2: "step2", 3: "step3", 4: "step4", 5: "step5" };
                 setOrderStep(map[s] ?? "step1");
               }} />
           )}
           </div>
         </div>
       </div>
+
+      {/* ══ Order Document Modal ══ */}
+      {viewEvent && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-8">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden">
+            <div className="px-6 py-4 flex items-center justify-between border-b shrink-0">
+              <div>
+                <p className="font-bold text-text">ใบสั่งยาเคมีบำบัด</p>
+                <p className="text-xs text-text-secondary">{pt.name} · {viewEvent.orderNo}</p>
+              </div>
+              <div className="flex items-center gap-3">
+                <button onClick={() => window.print()}
+                  className="text-sm font-semibold text-onc border border-onc/30 rounded-full px-4 py-1.5 hover:bg-onc/5 transition-colors flex items-center gap-1.5">
+                  <Printer size={14} /> พิมพ์
+                </button>
+                <button onClick={() => window.print()}
+                  className="text-sm font-semibold text-text bg-gray-100 rounded-full px-4 py-1.5 hover:bg-gray-200 transition-colors flex items-center gap-1.5">
+                  <Download size={14} /> บันทึก PDF
+                </button>
+                <button onClick={() => setViewEvent(null)}
+                  className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors">
+                  <X size={18} className="text-text-secondary" />
+                </button>
+              </div>
+            </div>
+            <div className="flex-1 overflow-y-auto p-8 bg-gray-100">
+              <div className="mx-auto bg-white shadow-lg p-8" style={{ width: 595, minHeight: 842, aspectRatio: "1 / 1.4142" }}>
+                {/* Header */}
+                <div className="flex justify-between items-start mb-4 border-b-2 border-onc pb-3">
+                  <div>
+                    <h1 className="text-sm font-bold text-onc">โรงพยาบาลตัวอย่าง</h1>
+                    <p className="text-[10px] text-text-secondary">คลินิกเคมีบำบัด / Chemotherapy Clinic</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-[10px] font-bold text-red-600">ใบสั่งยาเคมีบำบัด</p>
+                    <p className="text-[10px] text-text-secondary">เลขที่: <span className="font-mono font-bold text-text">{viewEvent.orderNo}</span></p>
+                  </div>
+                </div>
+                {/* Patient */}
+                <div className="border border-gray-300 rounded-lg p-2 mb-3 text-[10px]">
+                  <div className="grid grid-cols-4 gap-1">
+                    <div className="col-span-2"><span className="text-text-secondary">ชื่อ-สกุล: </span><span className="font-bold">{pt.name}</span></div>
+                    <div><span className="text-text-secondary">HN: </span><span className="font-bold">{pt.hn}</span></div>
+                    <div><span className="text-text-secondary">เพศ: </span><span className="font-bold">{pt.gender === "ชาย" ? "ชาย" : "หญิง"}</span></div>
+                  </div>
+                  <div className="grid grid-cols-4 gap-1 mt-1">
+                    <div><span className="text-text-secondary">BW: </span><span className="font-bold">{pt.weight} kg</span></div>
+                    <div><span className="text-text-secondary">HT: </span><span className="font-bold">{pt.height} cm</span></div>
+                    <div><span className="text-text-secondary">BSA: </span><span className="font-bold">{pt.bsa} m²</span></div>
+                    <div><span className="text-text-secondary">ECOG: </span><span className="font-bold">{pt.ecog}</span></div>
+                  </div>
+                </div>
+                {/* Diagnosis */}
+                <div className="border border-gray-300 rounded-lg p-2 mb-3 text-[10px]">
+                  <div className="grid grid-cols-3 gap-1">
+                    <div><span className="text-text-secondary">Diagnosis: </span><span className="font-bold">{pt.diagnosis}</span></div>
+                    <div><span className="text-text-secondary">ICD-10: </span><span className="font-bold">{pt.icd10}</span></div>
+                    <div><span className="text-text-secondary">Stage: </span><span className="font-bold text-onc">{pt.stage}</span></div>
+                  </div>
+                  <div className="grid grid-cols-3 gap-1 mt-1">
+                    <div><span className="text-text-secondary">Regimen: </span><span className="font-bold">{pt.regimen}</span></div>
+                    <div><span className="text-text-secondary">แพทย์: </span><span className="font-bold">{pt.doctor}</span></div>
+                    {pt.allergy !== "—" && pt.allergy !== "NKDA" && (
+                      <div><span className="text-text-secondary">แพ้ยา: </span><span className="font-bold text-red-600">{pt.allergy}</span></div>
+                    )}
+                  </div>
+                </div>
+                {/* Protocol */}
+                <div className="border border-gray-300 rounded-lg p-2 mb-3 text-[10px]">
+                  <div className="grid grid-cols-3 gap-1">
+                    <div><span className="text-text-secondary">Protocol: </span><span className="font-bold text-onc">{pt.regimen}</span></div>
+                    <div><span className="text-text-secondary">Cycle: </span><span className="font-bold">{pt.currentCycle}/{pt.totalCycles}</span></div>
+                    <div><span className="text-text-secondary">Order No: </span><span className="font-bold">{viewEvent.orderNo}</span></div>
+                  </div>
+                </div>
+                {/* Drug table */}
+                {viewEvent.drugs.length > 0 && (
+                  <table className="w-full text-[10px] border border-gray-300 mb-3">
+                    <thead>
+                      <tr className="bg-gray-50 text-text-secondary">
+                        <th className="border border-gray-300 px-2 py-1 text-left">ลำดับ</th>
+                        <th className="border border-gray-300 px-2 py-1 text-left">ชื่อยา</th>
+                        <th className="border border-gray-300 px-2 py-1 text-right">ขนาด</th>
+                        <th className="border border-gray-300 px-2 py-1 text-center">Route</th>
+                        <th className="border border-gray-300 px-2 py-1 text-center">เวลาให้ยา</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {viewEvent.drugs.map((d, idx) => (
+                        <tr key={idx}>
+                          <td className="border border-gray-300 px-2 py-1.5 text-center">{idx + 1}</td>
+                          <td className="border border-gray-300 px-2 py-1.5 font-bold">{d.name}</td>
+                          <td className="border border-gray-300 px-2 py-1.5 text-right font-bold">{d.dose}</td>
+                          <td className="border border-gray-300 px-2 py-1.5 text-center">{d.route}</td>
+                          <td className="border border-gray-300 px-2 py-1.5 text-center">{d.duration}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+                {/* Labs */}
+                {(viewEvent.labs.anc > 0 || viewEvent.labs.plt > 0 || viewEvent.labs.hb > 0) && (
+                  <div className="border border-gray-300 rounded-lg p-2 mb-3 text-[10px]">
+                    <span className="text-text-secondary">Lab: </span>
+                    <span className="font-bold">ANC {viewEvent.labs.anc}</span> · <span className="font-bold">PLT {viewEvent.labs.plt}</span> · <span className="font-bold">Hb {viewEvent.labs.hb}</span>
+                  </div>
+                )}
+                {/* Note */}
+                {viewEvent.note && (
+                  <div className="border border-gray-300 rounded-lg p-2 mb-3 text-[10px]">
+                    <span className="text-text-secondary">บันทึก: </span>
+                    <span className="font-bold">{viewEvent.note}</span>
+                  </div>
+                )}
+                {/* Signatures */}
+                <div className="grid grid-cols-3 gap-6 text-center text-[10px] border-t-2 border-gray-400 pt-4 mt-8">
+                  <div>
+                    <p className="font-bold">แพทย์ผู้สั่งยา</p>
+                    <p className="font-semibold text-onc">{pt.doctor}</p>
+                    <div className="border-b border-dotted border-gray-400 w-3/4 mx-auto mt-1 mb-1" />
+                    <p className="text-text-secondary">วันที่: ................</p>
+                  </div>
+                  <div>
+                    <p className="font-bold">เภสัชกรผู้ตรวจสอบ</p>
+                    <div className="border-b border-dotted border-gray-400 w-3/4 mx-auto mt-4 mb-1" />
+                    <p className="text-text-secondary">วันที่: ............... เวลา: ........ น.</p>
+                  </div>
+                  <div>
+                    <p className="font-bold">พยาบาลผู้ให้ยา</p>
+                    <div className="border-b border-dotted border-gray-400 w-3/4 mx-auto mt-4 mb-1" />
+                    <p className="text-text-secondary">วันที่: ............... เวลา: ........ น.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

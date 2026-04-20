@@ -1,120 +1,135 @@
 import { useState } from "react";
 import { useNavigate } from "react-router";
-import { Activity, ChevronRight, Lock, Eye, EyeOff } from "lucide-react";
-import { useOnc, roleLabels, roleEnglish, roleInitials, roleColor, type OncRole } from "../../components/onc/OncContext";
+import { ChevronRight } from "lucide-react";
+import { useOnc } from "../../components/onc/OncContext";
 
-/* ══════════════════════════════════════════════
-   Login — Role selection + PIN
-   Clean, centered card on gradient background
-   ══════════════════════════════════════════════ */
+const BASE = import.meta.env.BASE_URL;
 
-const roles: OncRole[] = ["ONC_DOCTOR", "ONC_PHARMACIST", "COMPOUND_TECH", "CHEMO_NURSE", "BILLING_OFFICER", "ADMIN"];
+const animStyles = `
+@keyframes fadeSlideUp {
+  0%   { opacity: 0; transform: translateY(20px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+@keyframes shimmer {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+@keyframes bgFadeIn {
+  0%   { opacity: 0; transform: scale(1.05); }
+  100% { opacity: 1; transform: scale(1); }
+}
+`;
+
+function fadeUp(delay: number): React.CSSProperties {
+  return { opacity: 0, animation: `fadeSlideUp 0.9s cubic-bezier(0.16,1,0.3,1) ${delay}s forwards` };
+}
 
 export default function Login() {
   const { setRole } = useOnc();
   const navigate = useNavigate();
-  const [selected, setSelected] = useState<OncRole | null>(null);
-  const [pin, setPin] = useState("");
-  const [showPin, setShowPin] = useState(false);
   const [loading, setLoading] = useState(false);
 
   function handleLogin() {
-    if (!selected) return;
     setLoading(true);
     setTimeout(() => {
-      setRole(selected);
+      setRole("ONC_DOCTOR");
       navigate("/onc");
     }, 600);
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-8"
-      style={{ background: "linear-gradient(135deg, #1A2A3A 0%, #243B4F 50%, #1A2A3A 100%)" }}>
+    <div className="min-h-screen w-full relative overflow-hidden" style={{ background: "#EDF1F7" }}>
+      <style>{animStyles}</style>
 
-      <div className="w-full max-w-md">
-        {/* Logo */}
-        <div className="flex items-center justify-center gap-3 mb-8">
-          <div className="w-12 h-12 rounded-2xl flex items-center justify-center"
-            style={{ background: "linear-gradient(135deg, #7C6EBF, #9B8FD8)", boxShadow: "0 4px 20px rgba(124,110,191,0.4)" }}>
-            <Activity size={24} className="text-white" />
-          </div>
-          <div>
-            <h1 className="text-white text-xl font-bold leading-tight">HOSxP Oncology</h1>
-            <p className="text-white/40 text-xs">Chemo CPOE Module</p>
-          </div>
-        </div>
+      {/* ── BG pattern ── */}
+      <img
+        src={`${BASE}onc/login-bg.svg`}
+        alt=""
+        className="absolute inset-0 w-full h-full object-cover pointer-events-none select-none"
+        style={{ opacity: 0, animation: "bgFadeIn 2.5s cubic-bezier(0.16,1,0.3,1) 0.1s forwards" }}
+      />
 
-        {/* Card */}
-        <div className="onc-card-raised p-8">
-          <h2 className="text-lg font-bold text-text mb-1">เข้าสู่ระบบ</h2>
-          <p className="text-sm text-text-muted mb-6">เลือก Role เพื่อเข้าใช้งาน (Prototype)</p>
+      {/* ── Bottom purple gradient ── */}
+      <div className="absolute bottom-0 left-0 right-0 h-[40%] pointer-events-none"
+        style={{ background: "linear-gradient(to top, rgba(103,75,179,0.08), transparent)" }} />
 
-          {/* Role grid */}
-          <div className="grid grid-cols-2 gap-2 mb-6">
-            {roles.map(r => (
-              <button key={r} onClick={() => setSelected(r)}
-                className={`flex items-center gap-3 px-3 py-3 rounded-xl border-2 transition-all text-left ${
-                  selected === r
-                    ? "border-onc bg-onc-bg"
-                    : "border-border hover:border-onc/30 hover:bg-background-alt"
-                }`}>
-                <div className="w-9 h-9 rounded-xl flex items-center justify-center text-[10px] font-bold text-white shrink-0"
-                  style={{ background: selected === r ? roleColor[r] : "#CBD5E1" }}>
-                  {roleInitials[r]}
-                </div>
-                <div className="min-w-0">
-                  <p className={`text-xs font-semibold truncate ${selected === r ? "text-onc" : "text-text"}`}>
-                    {roleEnglish[r]}
-                  </p>
-                  <p className="text-[10px] text-text-muted truncate">{roleLabels[r]}</p>
-                </div>
-              </button>
-            ))}
+      {/* ── Main flex container ── */}
+      <div className="relative z-10 min-h-screen flex items-center justify-center max-w-7xl mx-auto px-8 xl:px-16 gap-12 xl:gap-20">
+
+        {/* ════ LEFT SIDE ════ */}
+        <div className="flex-1 flex flex-col justify-center py-12 max-w-[540px]">
+          <div className="inline-flex items-center gap-1.5 rounded-full px-5 py-2.5 mb-8 w-fit text-sm text-text"
+            style={{
+              background: "rgba(103,75,179,0.1)",
+              border: "1px solid rgba(103,75,179,0.15)",
+              ...fadeUp(0.1),
+            }}>
+            ขับเคลื่อนโดย <span className="font-bold text-onc mx-1">BMS</span> — ภายใต้ระบบนิเวศคลินิก <span className="font-bold text-text ml-1">HOSxP</span>
           </div>
 
-          {/* PIN */}
-          {selected && (
-            <div className="mb-6">
-              <label className="block text-xs font-semibold text-text-secondary mb-2">
-                <Lock size={11} className="inline mr-1" />
-                PIN (Prototype: 1234)
-              </label>
-              <div className="relative">
-                <input
-                  type={showPin ? "text" : "password"}
-                  value={pin}
-                  onChange={e => setPin(e.target.value.replace(/\D/g, "").slice(0, 6))}
-                  placeholder="กรอก PIN 4-6 หลัก"
-                  className="w-full px-4 py-3 text-sm border border-border rounded-xl bg-background-alt focus:outline-none focus:border-onc focus:ring-2 focus:ring-onc/20 pr-10"
-                  onKeyDown={e => e.key === "Enter" && handleLogin()}
-                />
-                <button onClick={() => setShowPin(!showPin)}
-                  className="absolute right-3 top-3 text-text-muted hover:text-text">
-                  {showPin ? <EyeOff size={16} /> : <Eye size={16} />}
-                </button>
-              </div>
-            </div>
-          )}
+          <h1 className="text-[40px] xl:text-[46px] font-extrabold text-navy leading-tight mb-5"
+            style={fadeUp(0.25)}>
+            ยกระดับการสั่งยาเคมีบำบัด<br />ด้วยความแม่นยำทางดิจิทัล
+          </h1>
 
-          {/* Submit */}
-          <button onClick={handleLogin} disabled={!selected || loading}
-            className={`w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold transition-all ${
-              selected && !loading
-                ? "text-white shadow-lg hover:shadow-xl active:scale-[0.98]"
-                : "bg-border text-text-muted cursor-not-allowed"
-            }`}
-            style={selected && !loading ? { background: "linear-gradient(135deg, #7C6EBF, #6358A5)", boxShadow: "0 4px 16px rgba(124,110,191,0.4)" } : {}}>
+          <p className="text-[15px] text-text-secondary leading-relaxed mb-10 max-w-[500px]"
+            style={fadeUp(0.4)}>
+            ระบบจัดการยาเคมีบำบัดแบบครบวงจรที่เน้นความปลอดภัยสูงสุด
+            เชื่อมโยงการทำงานของทีมสหสาขาวิชาชีพ ตั้งแต่การวางแผนสูตรยาจนถึง
+            การบริหารยาข้างเตียง พร้อมระบบตรวจสอบความปลอดภัยแบบเรียลไทม์
+          </p>
+
+          <button onClick={handleLogin} disabled={loading}
+            className="relative overflow-hidden flex items-center gap-3 px-8 py-3.5 rounded-full text-base font-bold text-white cursor-pointer hover:bg-[#563AA4] active:scale-[0.98] transition-all w-fit"
+            style={{ background: "#674BB3", ...fadeUp(0.55) }}>
             {loading ? (
               <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
             ) : (
-              <>เข้าสู่ระบบ <ChevronRight size={14} /></>
+              <>เข้าสู่ระบบ <ChevronRight size={18} /></>
             )}
+            <div className="absolute inset-0 pointer-events-none"
+              style={{ animation: "shimmer 2.5s ease-in-out infinite" }}>
+              <div className="w-1/2 h-full"
+                style={{ background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.15), transparent)" }} />
+            </div>
           </button>
+
+          <p className="text-[10px] text-text-muted/30 mt-6" style={fadeUp(0.7)}>
+            HOSxP Oncology Chemo CPOE v1.0 — Prototype
+          </p>
         </div>
 
-        <p className="text-center text-white/20 text-xs mt-6">
-          HOSxP Oncology Chemo CPOE v1.0 — Prototype
-        </p>
+        {/* ════ RIGHT SIDE — Hero grid (7 parts) ════ */}
+        <div className="hidden lg:flex flex-1 items-center justify-center">
+          <div className="relative w-80 xl:w-96 pointer-events-none select-none" style={{ aspectRatio: "372 / 464" }}>
+            {/* White glow behind hero */}
+            <div className="absolute -inset-12 rounded-full"
+              style={{ background: "radial-gradient(circle, rgba(255,255,255,0.85) 0%, rgba(255,255,255,0) 70%)", filter: "blur(20px)" }} />
+            {[
+              { name: "doctor",   x: 0,   y: 0,   w: 248, h: 136, delay: 0.2  },
+              { name: "workflow", x: 248, y: 0,   w: 124, h: 200, delay: 0.32 },
+              { name: "nurse",    x: 0,   y: 136, w: 124, h: 204, delay: 0.44 },
+              { name: "bms",      x: 124, y: 136, w: 124, h: 124, delay: 0.56 },
+              { name: "tablet",   x: 248, y: 200, w: 124, h: 252, delay: 0.68 },
+              { name: "iv",       x: 0,   y: 340, w: 124, h: 124, delay: 0.80 },
+              { name: "team",     x: 124, y: 260, w: 124, h: 204, delay: 0.92 },
+            ].map((s) => (
+              <img
+                key={s.name}
+                src={`${BASE}onc/login-hero/${s.name}.svg`}
+                alt=""
+                className="absolute"
+                style={{
+                  left:   `${(s.x / 372) * 100}%`,
+                  top:    `${(s.y / 464) * 100}%`,
+                  width:  `${(s.w / 372) * 100}%`,
+                  height: `${(s.h / 464) * 100}%`,
+                  ...fadeUp(s.delay),
+                }}
+              />
+            ))}
+          </div>
+        </div>
       </div>
     </div>
   );

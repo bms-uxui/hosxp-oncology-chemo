@@ -29,14 +29,13 @@ const TOTAL_TODAY = 12;
 const ROLE_STAGE_MAP: Record<string, string> = {
   ONC_DOCTOR: "doctor",
   ONC_PHARMACIST: "pharmacist",
-  COMPOUND_TECH: "compound",
   CHEMO_NURSE: "nurse",
 };
 
 const stagesMeta: StageData[] = [
   { id: "doctor", key: "แพทย์สั่งยา", label: "รอตรวจสอบ", sublabel: "แพทย์สั่งยา", icon: Syringe, avatar: `${B}/avatar-doctor.png`, count: 2, completed: 2, heldCount: 1, oldestWaitMinutes: 25 },
   { id: "pharmacist", key: "เภสัชกรตรวจสอบ", label: "รอตรวจสอบ", sublabel: "เภสัชกรตรวจสอบ", icon: ClipboardCheck, avatar: `${B}/avatar-pharmacist.png`, count: 3, completed: 1, heldCount: 1, oldestWaitMinutes: 72 },
-  { id: "compound", key: "เตรียมผสมยา", label: "เตรียมยา", sublabel: "เตรียมผสมยา", icon: FlaskConical, avatar: `${B}/avatar-compound.png`, count: 2, completed: 1, heldCount: 0, oldestWaitMinutes: 45 },
+  { id: "compound", key: "เตรียมยา", label: "เตรียมยา", sublabel: "เตรียมยา", icon: FlaskConical, avatar: `${B}/avatar-compound.png`, count: 2, completed: 1, heldCount: 0, oldestWaitMinutes: 45 },
   { id: "nurse", key: "พยาบาลให้ยา", label: "ผู้ป่วยรอให้ยา", sublabel: "พยาบาลให้ยา", icon: Stethoscope, avatar: `${B}/avatar-nurse.png`, count: 3, completed: 1, heldCount: 2, oldestWaitMinutes: 18 },
   { id: "done", key: "เสร็จสิ้น", label: "ให้ยาครบ", sublabel: "เสร็จสิ้น", icon: CheckCircle2, avatar: `${B}/avatar-complete.png`, count: 2, completed: 2, heldCount: 0, oldestWaitMinutes: 0 },
 ];
@@ -44,7 +43,7 @@ const stagesMeta: StageData[] = [
 const patients = [
   { id: "P1", name: "นางคำปุ่น เสนาหอย", hn: "104365", age: "54 ปี 6 เดือน", doctor: "นพ.สมชาย รักษาดี", status: "แพทย์สั่งยา", statusColor: "#674BB3", regimen: "CAF", allergy: "Penicillin", tnm: "Stage IIIA", appointment: "12 ก.ย. 69", cycleNow: 2, cycleTotal: 6 },
   { id: "P2", name: "นายบุญมี ดีใจ", hn: "205471", age: "68 ปี 2 เดือน", doctor: "พญ.วิภา ศรีสุข", status: "เภสัชกรตรวจสอบ", statusColor: "#6366f1", regimen: "FOLFOX6", allergy: "Sulfa", tnm: "Stage IV", appointment: "12 ก.ย. 69", cycleNow: 5, cycleTotal: 12 },
-  { id: "P3", name: "นางเพ็ญ ใจสว่าง", hn: "308892", age: "61 ปี 9 เดือน", doctor: "นพ.สมชาย รักษาดี", status: "เตรียมผสมยา", statusColor: "#f59e0b", regimen: "CARBO-PAC", allergy: "NKDA", tnm: "Stage IIB", appointment: "13 ก.ย. 69", cycleNow: 1, cycleTotal: 6 },
+  { id: "P3", name: "นางเพ็ญ ใจสว่าง", hn: "308892", age: "61 ปี 9 เดือน", doctor: "นพ.สมชาย รักษาดี", status: "เตรียมยา", statusColor: "#f59e0b", regimen: "CARBO-PAC", allergy: "NKDA", tnm: "Stage IIB", appointment: "13 ก.ย. 69", cycleNow: 1, cycleTotal: 6 },
   { id: "P4", name: "นายสมศักดิ์ ชัยมงคล", hn: "412230", age: "72 ปี 1 เดือน", doctor: "พญ.วิภา ศรีสุข", status: "พยาบาลให้ยา", statusColor: "#10b981", regimen: "GEM", allergy: "Aspirin", tnm: "Stage III", appointment: "13 ก.ย. 69", cycleNow: 4, cycleTotal: 6 },
   { id: "P5", name: "นางสาวมาลี สุขใจ", hn: "519087", age: "52 ปี 4 เดือน", doctor: "นพ.สมชาย รักษาดี", status: "แพทย์สั่งยา", statusColor: "#674BB3", regimen: "AC-T", allergy: "Iodine", tnm: "Stage IIA", appointment: "14 ก.ย. 69", cycleNow: 3, cycleTotal: 8 },
   { id: "P6", name: "นายอุดม พัฒนา", hn: "620145", age: "45 ปี 7 เดือน", doctor: "นพ.ประยุทธ์ จันทร์ดี", status: "เสร็จสิ้น", statusColor: "#64748b", regimen: "R-CHOP", allergy: "NKDA", tnm: "Stage II", appointment: "11 ก.ย. 69", cycleNow: 6, cycleTotal: 6 },
@@ -53,7 +52,7 @@ const patients = [
 const activityFeed = [
   { action: "สั่งยา CAF Cycle 3 Day 1", patient: "คำปุ่น เสนาหอย", actor: "นพ.สมชาย", time: "10:32", color: "#674BB3" },
   { action: "Verify คำสั่งยา FOLFOX6", patient: "บุญมี ดีใจ", actor: "ภญ.นภา", time: "10:15", color: "#6366f1" },
-  { action: "เตรียมผสมยา CARBO-PAC เสร็จ", patient: "เพ็ญ ใจสว่าง", actor: "จนท.วิไล", time: "09:48", color: "#f59e0b" },
+  { action: "เตรียมยา CARBO-PAC เสร็จ", patient: "เพ็ญ ใจสว่าง", actor: "จนท.วิไล", time: "09:48", color: "#f59e0b" },
   { action: "เริ่มให้ยา GEM Day 8", patient: "สมศักดิ์ ชัยมงคล", actor: "พย.สุดา", time: "09:30", color: "#10b981" },
   { action: "ให้ยา R-CHOP ครบ — จำหน่าย", patient: "อุดม พัฒนา", actor: "พย.สุดา", time: "09:10", color: "#64748b" },
   { action: "Lab ANC 1.2 — ใกล้ threshold", patient: "มาลี สุขใจ", actor: "ระบบ", time: "08:45", color: "#dc2626" },

@@ -17,9 +17,10 @@
   --color-navy-light: #243B4F;
   --color-navy-dark: #0F1C2B;
 
-  /* ── Oncology Identity (Lavender/Purple) ── */
-  --color-onc: #7C6EBF;
-  --color-onc-light: #AEA3D8;
+  /* ── Oncology Accent (Purple) ── */
+  --color-onc: #674BB3;
+  --color-onc-hover: #563AA4;
+  --color-onc-light: #674BB3/10;
   --color-onc-bg: #F0EDF8;
 
   /* ── Functional ── */
@@ -43,14 +44,15 @@
   --color-background-alt: #F1F4F9;
 
   /* ── Text ── */
-  --color-text: #1A2A3A;
-  --color-text-secondary: #5A6B7D;
+  --color-text: #404040;
+  --color-text-secondary: #898989;
   --color-text-muted: #94A3B8;
   --color-text-inverse: #FFFFFF;
 
   /* ── Borders ── */
   --color-border: #E2E8F0;
   --color-border-light: #F1F5F9;
+  --color-border-card: rgba(217,217,217,0.25);
 }
 
 /* ══════════════════════════════════════════════
@@ -63,7 +65,7 @@ body {
   background-color: var(--color-background);
   color: var(--color-text);
   margin: 0;
-  font-size: 16px;
+  font-size: 15px;
   line-height: 1.5;
 }
 
@@ -171,10 +173,59 @@ body {
   100% { background-position: -200% 0; }
 }
 
+@keyframes ivDrip {
+  0%, 100% { opacity: 0.3; transform: translateY(-2px); }
+  50% { opacity: 1; transform: translateY(2px); }
+}
+
+@keyframes ivFlow {
+  0% { stroke-dashoffset: 20; }
+  100% { stroke-dashoffset: 0; }
+}
+
+@keyframes liquidWave {
+  0% { d: path("M0 8 Q5 4 10 8 Q15 12 20 8 Q25 4 30 8 L30 20 L0 20 Z"); }
+  50% { d: path("M0 8 Q5 12 10 8 Q15 4 20 8 Q25 12 30 8 L30 20 L0 20 Z"); }
+  100% { d: path("M0 8 Q5 4 10 8 Q15 12 20 8 Q25 4 30 8 L30 20 L0 20 Z"); }
+}
+
+@keyframes liquidBob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(1px); }
+}
+
+@keyframes ivLineDraw {
+  0% { stroke-dashoffset: 120; opacity: 0.3; }
+  30% { stroke-dashoffset: 0; opacity: 1; }
+  70% { stroke-dashoffset: 0; opacity: 1; }
+  100% { stroke-dashoffset: -120; opacity: 0.3; }
+}
+
+@keyframes typeWriter {
+  from { width: 0; }
+  to { width: 100%; }
+}
+
+@keyframes blinkCursor {
+  0%, 100% { border-right-color: transparent; }
+  50% { border-right-color: #674BB3; }
+}
+
+@keyframes slideUp {
+  0% { transform: translateY(100%); }
+  100% { transform: translateY(0); }
+}
+
 @keyframes stepPop {
   0% { transform: scale(0); opacity: 0; }
   60% { transform: scale(1.3); opacity: 1; }
   100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes rotatePhone {
+  0%, 20% { transform: rotate(0deg); }
+  50%, 70% { transform: rotate(-90deg); }
+  100% { transform: rotate(0deg); }
 }
 
 @keyframes fadeSlideIn {
@@ -208,12 +259,41 @@ tr {
    HeroUI component overrides
    ══════════════════════════════════════════════ */
 [data-slot="popover-content"],
-[data-slot="calendar-content"],
-[data-slot="listbox"] {
+[data-slot="calendar-content"] {
   background: white !important;
   border: 1px solid var(--color-border) !important;
   border-radius: 12px !important;
   box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12) !important;
+}
+
+/* Month/Year picker grid inside calendar */
+[data-slot="calendar"] [data-slot="picker-wrapper"] {
+  max-height: 280px !important;
+  overflow-y: auto !important;
+}
+
+[data-slot="calendar"] [data-slot="picker-item"] {
+  cursor: pointer !important;
+  padding: 8px 12px !important;
+  border-radius: 8px !important;
+}
+
+[data-slot="calendar"] [data-slot="picker-item"]:hover,
+[data-slot="picker-item"]:hover,
+[data-slot="calendar"] [role="option"]:hover {
+  background: color-mix(in srgb, var(--color-onc) 10%, transparent) !important;
+  cursor: pointer !important;
+}
+
+[data-slot="calendar"] [data-slot="picker-item"][data-value="true"],
+[data-slot="calendar"] [data-slot="picker-item"][aria-selected="true"],
+[data-slot="calendar"] [data-slot="picker-item"][data-selected="true"],
+[data-slot="calendar"] button[data-selected="true"],
+[data-slot="calendar"] [role="option"][aria-selected="true"],
+[data-slot="picker-item"][data-selected="true"] {
+  background: var(--color-onc) !important;
+  color: white !important;
+  border-radius: 8px !important;
 }
 
 [data-slot="calendar-header-cell"] {
@@ -221,12 +301,12 @@ tr {
 }
 
 [data-slot="cell-button"][data-selected="true"] {
-  background: #674BB3 !important;
+  background: var(--color-onc) !important;
   color: white !important;
 }
 
 [data-slot="cell-button"]:hover {
-  background: rgba(103, 75, 179, 0.1);
+  background: color-mix(in srgb, var(--color-onc) 10%, transparent);
 }
 
 [data-slot="trigger"] {
@@ -239,6 +319,111 @@ tr {
 }
 
 [data-slot="listboxItem"][data-selected="true"] {
-  background: rgba(103, 75, 179, 0.1) !important;
-  color: #674BB3 !important;
+  background: color-mix(in srgb, var(--color-onc) 10%, transparent) !important;
+  color: var(--color-onc) !important;
+}
+
+/* ── DatePicker segment spacing fix ── */
+[data-slot="segment"] {
+  padding: 0 1px;
+  cursor: pointer !important;
+}
+
+[data-slot="segment"][data-type="month"] {
+  min-width: max-content;
+}
+
+[data-slot="separator"] {
+  padding: 0 1px;
+}
+
+[data-slot="inner-wrapper"] {
+  display: flex;
+  align-items: center;
+  gap: 0;
+}
+
+[data-slot="input-wrapper"] {
+  background: white;
+  border: 1px solid #d1d5db;
+  border-radius: 12px;
+  padding: 8px 12px;
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+  cursor: pointer !important;
+}
+
+[data-slot="input-wrapper"]:hover {
+  border-color: var(--color-onc);
+}
+
+[data-slot="input-wrapper"]:focus-within {
+  border-color: var(--color-onc);
+  box-shadow: 0 0 0 1px var(--color-onc);
+}
+
+[data-slot="time-input-wrapper"] {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+
+/* ══════════════════════════════════════════════
+   Print — show only sticker / document
+   ══════════════════════════════════════════════ */
+@media print {
+  @page { size: auto; margin: 10mm; }
+  body * { visibility: hidden !important; }
+  .print-area, .print-area * {
+    visibility: visible !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    color-adjust: exact !important;
+  }
+  /* Default: A4 document — top left, full width */
+  .print-area {
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 8mm !important;
+    box-shadow: none !important;
+    border: none !important;
+    border-radius: 0 !important;
+    background: white !important;
+  }
+  /* Sticker variant — centered, compact */
+  .print-area.print-sticker {
+    position: fixed !important;
+    top: 50% !important;
+    left: 50% !important;
+    transform: translate(-50%, -50%) !important;
+    width: 420px !important;
+    padding: 0 !important;
+    border: 1.5px solid #d1d5db !important;
+    border-radius: 12px !important;
+    overflow: hidden !important;
+  }
+  /* Preserve colors */
+  .print-area [class*="bg-onc"],
+  .print-area [class*="bg-\\[\\#674BB3\\]"] { background-color: #674BB3 !important; }
+  .print-area [class*="text-white"] { color: white !important; }
+  .print-area [class*="text-amber"] { color: #fbbf24 !important; }
+  .print-area [class*="bg-gray-50"] { background-color: #f9fafb !important; }
+  .print-area [class*="border-gray"] { border-color: #d1d5db !important; }
+  .print-area [class*="text-\\[\\#674BB3\\]"] { color: #674BB3 !important; }
+  .print-area [class*="text-red"] { color: #dc2626 !important; }
+  .print-area [class*="text-emerald"] { color: #059669 !important; }
+  /* Force show hidden print area */
+  .print-area.hidden { display: block !important; }
+}
+
+
+/* DatePicker past dates */
+[data-slot="cell-button"][data-unavailable="true"],
+[data-slot="cell-button"][data-disabled="true"] {
+  opacity: 0.3 !important;
 }

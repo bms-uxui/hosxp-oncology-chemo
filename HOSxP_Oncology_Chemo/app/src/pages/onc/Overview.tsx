@@ -14,7 +14,7 @@ const B = "/hosxp-oncology-chemo/onc";
 const pipeline = [
   { avatar: `${B}/avatar-doctor.png`, label: "รอตรวจสอบ", count: 1, sublabel: "รอแพทย์สั่งยา", color: "#674BB3" },
   { avatar: `${B}/avatar-pharmacist.png`, label: "รอตรวจสอบ", count: 30, sublabel: "เภสัชกรตรวจสอบ", color: "#6366f1", imgClass: "h-28 right-1 -bottom-8" },
-  { avatar: `${B}/avatar-compound.png`, label: "เตรียมยา", count: 12, sublabel: "เตรียมผสมยาเคมี", color: "#f59e0b", imgClass: "h-28 right-1 -bottom-8" },
+  { avatar: `${B}/avatar-compound.png`, label: "เตรียมยา", count: 12, sublabel: "เตรียมยาเคมี", color: "#f59e0b", imgClass: "h-28 right-1 -bottom-8" },
   { avatar: `${B}/avatar-nurse.png`, label: "ผู้ป่วยรอให้ยา", count: 25, sublabel: "รอพยาบาลให้ยา", color: "#10b981" },
   { avatar: `${B}/avatar-complete.png`, label: "ให้ยาครบ", count: 25, sublabel: "ให้ยาครบแล้ว", color: "#64748b" },
 ];
@@ -31,15 +31,15 @@ const pipeline = [
 */
 const patients = [
   { hn: "104365", orderId: "CHEMO-20690312-0001", name: "นางคำปุ่น เสนาหอย", age: "54", gender: "หญิง", regimen: "CAF", cycle: "C2/6", doctor: "นพ.สมชาย รักษาดี", status: "รอแพทย์สั่งยา", statusColor: "#674BB3", date: "12 ก.ย. 69" },
-  { hn: "205471", orderId: "CHEMO-20690312-0002", name: "นายบุญมี ดีใจ", age: "68", gender: "ชาย", regimen: "FOLFOX6", cycle: "C5/12", doctor: "พญ.วิภา ศรีสุข", status: "เภสัชกรตรวจสอบ", statusColor: "#6366f1", date: "12 ก.ย. 69" },
-  { hn: "308892", orderId: "CHEMO-20690313-0003", name: "นางเพ็ญ ใจสว่าง", age: "61", gender: "หญิง", regimen: "CARBO-PAC", cycle: "C1/6", doctor: "นพ.สมชาย รักษาดี", status: "เตรียมผสมยาเคมี", statusColor: "#f59e0b", date: "13 ก.ย. 69" },
+  { hn: "205471", orderId: "CHEMO-20690312-0002", name: "นายบุญมี ดีใจ", age: "68", gender: "ชาย", regimen: "FOLFOX6", cycle: "C5/12", doctor: "พญ.วิภา ศรีสุข", status: "เภสัชกรตรวจสอบ", statusColor: "#6366f1", date: "12 ก.ย. 69", enteredStageAt: "08:15" },
+  { hn: "308892", orderId: "CHEMO-20690313-0003", name: "นางเพ็ญ ใจสว่าง", age: "61", gender: "หญิง", regimen: "CARBO-PAC", cycle: "C1/6", doctor: "นพ.สมชาย รักษาดี", status: "เตรียมยาเคมี", statusColor: "#f59e0b", date: "13 ก.ย. 69" },
   { hn: "412230", orderId: "CHEMO-20690313-0004", name: "นายสมศักดิ์ ชัยมงคล", age: "72", gender: "ชาย", regimen: "GEM", cycle: "C4/6", doctor: "พญ.วิภา ศรีสุข", status: "รอพยาบาลให้ยา", statusColor: "#10b981", date: "13 ก.ย. 69" },
   { hn: "519087", orderId: "CHEMO-20690314-0005", name: "นางสาวมาลี สุขใจ", age: "52", gender: "หญิง", regimen: "AC-T", cycle: "C3/8", doctor: "นพ.สมชาย รักษาดี", status: "ให้ยาครบแล้ว", statusColor: "#64748b", date: "14 ก.ย. 69" },
   { hn: "620145", orderId: "CHEMO-20690315-0006", name: "นายอุดม พัฒนา", age: "45", gender: "ชาย", regimen: "R-CHOP", cycle: "C2/6", doctor: "นพ.ประยุทธ์ จันทร์ดี", status: "รอแพทย์สั่งยา", statusColor: "#674BB3", date: "15 ก.ย. 69" },
   { hn: "731256", orderId: "CHEMO-20690315-0007", name: "นางอรุณ เรืองศรี", age: "59", gender: "หญิง", regimen: "CAF", cycle: "C5/6", doctor: "นพ.สมชาย รักษาดี", status: "รอพยาบาลให้ยา", statusColor: "#10b981", date: "15 ก.ย. 69" },
   { hn: "842367", orderId: "CHEMO-20690314-0008", name: "นายสุรชัย วงศ์วาน", age: "63", gender: "ชาย", regimen: "FOLFOX6", cycle: "C8/12", doctor: "พญ.วิภา ศรีสุข", status: "ให้ยาครบแล้ว", statusColor: "#64748b", date: "14 ก.ย. 69" },
-  { hn: "953478", orderId: "CHEMO-20690316-0009", name: "นางสุภา รักษ์ดี", age: "50", gender: "หญิง", regimen: "CARBO-PAC", cycle: "C3/6", doctor: "นพ.ประยุทธ์ จันทร์ดี", status: "เภสัชกรตรวจสอบ", statusColor: "#6366f1", date: "16 ก.ย. 69" },
-  { hn: "164589", orderId: "CHEMO-20690316-0010", name: "นายวิชัย ใจดี", age: "70", gender: "ชาย", regimen: "GEM", cycle: "C2/4", doctor: "พญ.วิภา ศรีสุข", status: "เตรียมผสมยาเคมี", statusColor: "#f59e0b", date: "16 ก.ย. 69" },
+  { hn: "953478", orderId: "CHEMO-20690316-0009", name: "นางสุภา รักษ์ดี", age: "50", gender: "หญิง", regimen: "CARBO-PAC", cycle: "C3/6", doctor: "นพ.ประยุทธ์ จันทร์ดี", status: "เภสัชกรตรวจสอบ", statusColor: "#6366f1", date: "16 ก.ย. 69", enteredStageAt: "09:45" },
+  { hn: "164589", orderId: "CHEMO-20690316-0010", name: "นายวิชัย ใจดี", age: "70", gender: "ชาย", regimen: "GEM", cycle: "C2/4", doctor: "พญ.วิภา ศรีสุข", status: "เตรียมยาเคมี", statusColor: "#f59e0b", date: "16 ก.ย. 69" },
   { hn: "275690", orderId: "CHEMO-20690317-0011", name: "นางนภา แก้วใส", age: "48", gender: "หญิง", regimen: "AC-T", cycle: "C1/4", doctor: "นพ.สมชาย รักษาดี", status: "รอแพทย์สั่งยา", statusColor: "#674BB3", date: "17 ก.ย. 69" },
   { hn: "386701", orderId: "CHEMO-20690317-0012", name: "นายประสิทธิ์ ทองคำ", age: "66", gender: "ชาย", regimen: "FOLFOX6", cycle: "C3/12", doctor: "พญ.วิภา ศรีสุข", status: "รอพยาบาลให้ยา", statusColor: "#10b981", date: "17 ก.ย. 69" },
 ];
@@ -56,7 +56,7 @@ export default function Overview() {
     { label: "ทั้งหมด", value: null },
     { label: "รอแพทย์สั่งยา", value: "รอแพทย์สั่งยา", color: "#674BB3" },
     { label: "เภสัชกรตรวจสอบ", value: "เภสัชกรตรวจสอบ", color: "#6366f1" },
-    { label: "เตรียมผสมยาเคมี", value: "เตรียมผสมยาเคมี", color: "#f59e0b" },
+    { label: "เตรียมยาเคมี", value: "เตรียมยาเคมี", color: "#f59e0b" },
     { label: "รอพยาบาลให้ยา", value: "รอพยาบาลให้ยา", color: "#10b981" },
     { label: "ให้ยาครบแล้ว", value: "ให้ยาครบแล้ว", color: "#64748b" },
   ];
@@ -83,7 +83,7 @@ export default function Overview() {
             <p className="text-sm text-[#674BB3]/70 mt-1 max-w-md">จัดการคำสั่งยา ติดตามสถานะ และดูแลผู้ป่วยได้ในที่เดียว</p>
           </div>
           <div className="flex gap-2 mt-4">
-            <button onClick={() => navigate("/onc/patients")}
+            <button onClick={() => navigate("/onc/register")}
               className="group/btn flex items-center gap-2 px-6 py-3 bg-[#674BB3] text-white text-sm font-semibold rounded-xl hover:bg-[#563AA4] transition-colors">
               <UserPlus size={18} /> ลงทะเบียนผู้ป่วยใหม่
             </button>
@@ -175,8 +175,10 @@ export default function Overview() {
                   <td className="px-4 py-3 text-sm text-[#898989]">{p.doctor}</td>
                   <td className="px-4 py-3 text-sm text-[#898989]">{p.date}</td>
                   <td className="px-4 py-3">
-                    <span className="text-xs font-semibold text-white px-2.5 py-1 rounded-full"
-                      style={{ background: p.statusColor }}>{p.status}</span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-semibold text-white px-2.5 py-1 rounded-full"
+                        style={{ background: p.statusColor }}>{p.status}</span>
+                    </div>
                   </td>
                 </tr>
               ))}

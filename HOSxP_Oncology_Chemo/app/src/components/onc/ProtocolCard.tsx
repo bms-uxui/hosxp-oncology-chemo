@@ -19,33 +19,33 @@ export default function ProtocolCard({ code, drugs, totalCycles, cycleDays, trea
 
   return (
     <button onClick={onClick}
-      className={`w-full text-left rounded-2xl border-[0.1px] border-[#d9d9d9]/25 transition-all ${
-        selected ? "ring-2 ring-[#674BB3]/30 bg-[#674BB3]/5" : "bg-white hover:bg-gray-50"
+      className={`w-full text-left rounded-2xl border-[0.1px] border-border-card transition-all ${
+        selected ? "ring-2 ring-onc/30 bg-onc/5" : "bg-white hover:bg-gray-50"
       }`} style={{ boxShadow: "0 1px 4px rgba(0,0,0,0.04)" }}>
       {/* Top row: 3-column */}
       <div className="flex items-stretch divide-x divide-gray-100">
         {/* Left: name + description */}
         <div className="flex-1 min-w-0 px-5 py-4">
-          <p className={`text-sm font-bold ${selected ? "text-[#674BB3]" : "text-[#404040]"}`}>{code}</p>
-          <p className="text-xs text-[#898989] mt-0.5 truncate">{drugs}</p>
+          <p className={`text-sm font-bold ${selected ? "text-onc" : "text-text"}`}>{code}</p>
+          <p className="text-xs text-text-secondary mt-0.5 truncate">{drugs}</p>
         </div>
         {/* Middle: cycles */}
         <div className="w-24 shrink-0 px-3 py-4 flex flex-col items-center justify-center">
-          <span className="text-sm font-bold text-[#404040]">{totalCycles}</span>
-          <span className="text-xs text-[#898989]">Cycles</span>
+          <span className="text-sm font-bold text-text">{totalCycles}</span>
+          <span className="text-xs text-text-secondary">Cycles</span>
         </div>
         {/* Right: schedule */}
         <div className="w-24 shrink-0 px-3 py-4 flex flex-col items-center justify-center">
-          <span className="text-sm font-bold text-[#404040]">q{cycleDays}d</span>
-          <span className="text-xs text-[#898989]">รอบการให้ยา</span>
+          <span className="text-sm font-bold text-text">q{cycleDays}d</span>
+          <span className="text-xs text-text-secondary">รอบการให้ยา</span>
         </div>
         {/* Right: emeto */}
         <div className="w-24 shrink-0 px-3 py-4 flex flex-col items-center justify-center">
           <HeroTooltip placement="top" className="bg-white shadow-lg rounded-lg border border-gray-100 max-w-xs"
-            content={<p className="px-2 py-1 text-xs text-[#404040]">Emetogenic Risk — ระดับความเสี่ยงที่สูตรยาจะทำให้เกิดอาการคลื่นไส้อาเจียน</p>}>
+            content={<p className="px-2 py-1 text-xs text-text">Emetogenic Risk — ระดับความเสี่ยงที่สูตรยาจะทำให้เกิดอาการคลื่นไส้อาเจียน</p>}>
             <span className={`text-sm font-bold cursor-help flex items-center gap-1 ${emetColor}`}>{emetogenicRisk} <Info size={11} /></span>
           </HeroTooltip>
-          <span className="text-xs text-[#898989]">Emeto</span>
+          <span className="text-xs text-text-secondary">Emeto</span>
         </div>
       </div>
       {/* Bottom row: tags + check */}
@@ -53,9 +53,9 @@ export default function ProtocolCard({ code, drugs, totalCycles, cycleDays, trea
         <div className="flex items-center gap-3">
           <span className="text-xs font-medium text-blue-600 flex items-center gap-1"><Pill size={12} /> {cancer}</span>
           <span className="text-xs font-medium text-purple-600 flex items-center gap-1"><Syringe size={12} /> {line}</span>
-          <span className="text-xs text-[#898989] flex items-center gap-1"><Calendar size={12} /> Day {treatmentDays.join(", ")}</span>
+          <span className="text-xs text-text-secondary flex items-center gap-1"><Calendar size={12} /> Day {treatmentDays.join(", ")}</span>
         </div>
-        {selected && <Check size={16} className="text-[#674BB3] shrink-0" />}
+        {selected && <Check size={16} className="text-onc shrink-0" />}
       </div>
     </button>
   );

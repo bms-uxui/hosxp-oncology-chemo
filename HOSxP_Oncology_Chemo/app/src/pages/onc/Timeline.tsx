@@ -64,7 +64,7 @@ const mockEvents: TimelineEvent[] = [
   { id: "E02", datetime: "16/03/69 07:45", type: "lab", actor: "ระบบ LIS", role: "ระบบ", action: "รับผล Lab", detail: "ANC 2.1, PLT 185, Hb 11.2, Cr 0.8 — ผ่านเกณฑ์ทั้งหมด" },
   { id: "E03", datetime: "16/03/69 08:15", type: "order", actor: "นพ.สมชาย", role: "แพทย์", action: "สั่งยาเคมี CAF C3D1", detail: "Cyclophosphamide 700 mg, Doxorubicin 70 mg, 5-FU 700 mg · Submit + PIN", highlight: true },
   { id: "E04", datetime: "16/03/69 08:30", type: "verify", actor: "ภก.วิไล", role: "เภสัชกร", action: "ตรวจสอบคำสั่ง — Verified", detail: "ขนาดยาถูกต้อง · ไม่มีการปรับ dose · PIN verified" },
-  { id: "E05", datetime: "16/03/69 09:00", type: "compound", actor: "ชนม์", role: "เจ้าหน้าที่ผสมยา", action: "เตรียมยาเสร็จ", detail: "Lot: CY-2026031, DOX-2026028, FU-2026015 · Waste: Doxorubicin 5 mg" },
+  { id: "E05", datetime: "16/03/69 09:00", type: "compound", actor: "ชนม์", role: "เจ้าหน้าที่เตรียมยา", action: "เตรียมยาเสร็จ", detail: "Lot: CY-2026031, DOX-2026028, FU-2026015 · Waste: Doxorubicin 5 mg" },
   { id: "E06", datetime: "16/03/69 09:30", type: "administer", actor: "พว.อรุณ", role: "พยาบาล", action: "เริ่มให้ยา Ondansetron", detail: "IV 15 min · Start 09:30" },
   { id: "E07", datetime: "16/03/69 09:45", type: "administer", actor: "พว.อรุณ", role: "พยาบาล", action: "เริ่มให้ยา Cyclophosphamide", detail: "IV Infusion 30 min · Start 09:45" },
   { id: "E08", datetime: "16/03/69 10:15", type: "administer", actor: "พว.อรุณ", role: "พยาบาล", action: "เริ่มให้ยา Doxorubicin", detail: "IV Push · Start 10:15" },
