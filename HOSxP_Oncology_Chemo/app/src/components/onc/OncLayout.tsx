@@ -42,12 +42,21 @@ export default function OncLayout() {
 
       {/* ══════════ Sidebar ══════════ */}
       <aside className="hidden lg:flex w-56 xl:w-60 shrink-0 rounded-3xl flex-col overflow-hidden"
-        style={{ background: "#674BB3" }}>
+        style={{
+          background: "linear-gradient(180deg, #7B5FC7 0%, #674BB3 30%, #5A3FA8 70%, #4E3599 100%)",
+          boxShadow: "0 8px 32px rgba(103,75,179,0.3), inset 0 1px 0 rgba(255,255,255,0.15)",
+          border: "1px solid rgba(255,255,255,0.08)",
+        }}>
 
         {/* Logo at top */}
         <div className="flex items-center gap-3 px-5 pt-6 pb-4">
-          <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center shrink-0 overflow-hidden">
-            <img src={`${import.meta.env.BASE_URL}onc/logo.png`} alt="Logo" className="w-8 h-8 object-contain" />
+          <div className="w-11 h-11 rounded-full flex items-center justify-center shrink-0 overflow-hidden"
+            style={{
+              background: "linear-gradient(145deg, #ffffff 0%, #E8E3F8 100%)",
+              boxShadow: "0 6px 20px rgba(103,75,179,0.35), 0 2px 6px rgba(0,0,0,0.1), inset 0 2px 4px rgba(255,255,255,1)",
+              border: "2px solid rgba(255,255,255,0.5)",
+            }}>
+            <img src={`${import.meta.env.BASE_URL}onc/logo.png`} alt="Logo" className="w-8 h-8 object-contain drop-shadow-md" />
           </div>
           <div>
             <p className="text-[10px] font-medium text-white/60 leading-tight">HOSxP</p>
@@ -62,10 +71,14 @@ export default function OncLayout() {
               className={({ isActive }) =>
                 `flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-bold transition-all ${
                   isActive
-                    ? "bg-[#FF8654] text-white shadow-sm"
-                    : "text-white/80 hover:bg-white/10"
+                    ? "text-white"
+                    : "text-white/70 hover:bg-white/10"
                 }`
-              }>
+              }
+              style={({ isActive }) => isActive ? {
+                background: "linear-gradient(135deg, #FF9B6A 0%, #FF8654 50%, #E8703F 100%)",
+                boxShadow: "inset 0 1px 0 rgba(255,255,255,0.2)",
+              } : {}}>
               <item.icon size={18} strokeWidth={1.8} />
               <span>{item.label}</span>
             </NavLink>
@@ -74,8 +87,12 @@ export default function OncLayout() {
           {/* Notification nav item */}
           <button onClick={() => setNotiOpen(!notiOpen)}
             className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-bold transition-all text-left ${
-              notiOpen ? "bg-[#FF8654] text-white shadow-sm" : "text-white/80 hover:bg-white/10"
-            }`}>
+              notiOpen ? "text-white" : "text-white/70 hover:bg-white/10"
+            }`}
+            style={notiOpen ? {
+              background: "linear-gradient(135deg, #FF9B6A 0%, #FF8654 50%, #E8703F 100%)",
+              boxShadow: "inset 0 1px 0 rgba(255,255,255,0.2)",
+            } : {}}>
             <Bell size={18} strokeWidth={1.8} />
             <span className="flex-1">การแจ้งเตือน</span>
             {unreadCount > 0 && (
@@ -89,7 +106,11 @@ export default function OncLayout() {
           <div className="relative">
             <button onClick={() => setRoleOpen(!roleOpen)}
               className="w-full flex items-center gap-3 px-3 py-3 rounded-2xl hover:bg-white/10 transition-all text-left"
-              style={{ background: "#563AA4" }}>
+              style={{
+                background: "linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(0,0,0,0.1) 100%)",
+                boxShadow: "inset 0 1px 0 rgba(255,255,255,0.1), 0 2px 8px rgba(0,0,0,0.1)",
+                border: "1px solid rgba(255,255,255,0.08)",
+              }}>
               <div className="w-9 h-9 rounded-full flex items-center justify-center text-[10px] font-bold text-white shrink-0"
                 style={{ background: roleColor[role] }}>
                 {roleInitials[role]}

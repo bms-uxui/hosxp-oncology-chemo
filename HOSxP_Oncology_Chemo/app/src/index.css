@@ -371,6 +371,84 @@ tr {
 
 
 /* ══════════════════════════════════════════════
+   3D Glass Buttons — auto-apply to all purple buttons
+   ══════════════════════════════════════════════ */
+
+/* Global button cursor + hover */
+button, a[role="button"] {
+  cursor: pointer;
+}
+button.text-white:not(.no-glass):hover,
+a.text-white:not(.no-glass):hover {
+  filter: brightness(1.08);
+}
+
+/* 3D Glass Cards — apply to all white rounded cards */
+.bg-white:is(.rounded-2xl, .rounded-3xl, .rounded-xl) {
+  background: linear-gradient(145deg, #ffffff 0%, #f8f7fc 100%) !important;
+  box-shadow: 0 4px 16px rgba(103,75,179,0.06), inset 0 1px 0 rgba(255,255,255,0.8) !important;
+  border: 1px solid rgba(103,75,179,0.05) !important;
+}
+
+/* 3D Glass effect — all white-text buttons get glass treatment */
+button.text-white:not(.no-glass),
+a.text-white:not(.no-glass) {
+  box-shadow: 0 4px 14px rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.25), inset 0 -1px 0 rgba(0,0,0,0.08);
+  border: 1px solid rgba(255,255,255,0.12);
+  text-shadow: 0 1px 2px rgba(0,0,0,0.1);
+}
+button.text-white:not(.no-glass):hover,
+a.text-white:not(.no-glass):hover {
+  box-shadow: 0 6px 20px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.3), inset 0 -1px 0 rgba(0,0,0,0.1);
+}
+button.text-white:not(.no-glass):active,
+a.text-white:not(.no-glass):active {
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1), inset 0 1px 0 rgba(255,255,255,0.15);
+  transform: scale(0.98);
+}
+
+/* Orange active buttons (sidebar, etc.) */
+.bg-\[\#FF8654\] {
+  &:is(button, a, [role="button"]) {
+    background: linear-gradient(145deg, #FF9B6A 0%, #FF8654 50%, #E8703F 100%) !important;
+    box-shadow: 0 4px 14px rgba(255,134,84,0.25), inset 0 1px 0 rgba(255,255,255,0.2);
+  }
+}
+
+/* Indigo buttons */
+.bg-indigo-500 {
+  &:is(button, a, [role="button"]) {
+    background: linear-gradient(145deg, #818CF8 0%, #6366F1 40%, #5558E6 100%) !important;
+    box-shadow: 0 4px 14px rgba(99,102,241,0.25), inset 0 1px 0 rgba(255,255,255,0.2);
+  }
+}
+
+/* Emerald buttons */
+.bg-emerald-500, .bg-emerald-600 {
+  &:is(button, a, [role="button"]) {
+    background: linear-gradient(145deg, #34D399 0%, #10B981 40%, #059669 100%) !important;
+    box-shadow: 0 4px 14px rgba(16,185,129,0.25), inset 0 1px 0 rgba(255,255,255,0.2);
+  }
+}
+
+/* Red/danger buttons */
+.bg-red-500 {
+  &:is(button, a, [role="button"]) {
+    background: linear-gradient(145deg, #F87171 0%, #EF4444 40%, #DC2626 100%) !important;
+    box-shadow: 0 4px 14px rgba(239,68,68,0.25), inset 0 1px 0 rgba(255,255,255,0.2);
+  }
+}
+
+/* Amber buttons */
+.bg-amber-500 {
+  &:is(button, a, [role="button"]) {
+    background: linear-gradient(145deg, #FBBF24 0%, #F59E0B 40%, #D97706 100%) !important;
+    box-shadow: 0 4px 14px rgba(245,158,11,0.25), inset 0 1px 0 rgba(255,255,255,0.2);
+  }
+}
+
+
+/* ══════════════════════════════════════════════
    Print — show only sticker / document
    ══════════════════════════════════════════════ */
 @media print {

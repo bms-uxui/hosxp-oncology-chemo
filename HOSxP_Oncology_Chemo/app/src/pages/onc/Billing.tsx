@@ -351,7 +351,7 @@ export default function Billing() {
       </div>
 
       {/* Banner */}
-      <div className="rounded-3xl overflow-hidden relative shrink-0" style={{ background: "#DEDFFF", minHeight: 140 }}>
+      <div className="rounded-3xl overflow-hidden relative shrink-0" style={{ background: "linear-gradient(135deg, #E8E3F8 0%, #D8D0F0 40%, #C8BFE8 100%)", minHeight: 140, boxShadow: "0 4px 20px rgba(103,75,179,0.1)" }}>
         <img src={`${BASE}onc/ribbon-left.svg`} className="absolute -left-2 bottom-0 h-14 opacity-50" alt="" />
         <img src={`${BASE}onc/banner-3d.png`} className="absolute right-0 -bottom-8 h-52 object-contain" alt="" />
         <div className="relative z-10 px-8 py-6">

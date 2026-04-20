@@ -71,7 +71,7 @@ export default function Overview() {
     <div className="flex flex-col h-[calc(100vh-2rem)] space-y-4 overflow-hidden">
 
       {/* ── Banner ── */}
-      <div className="rounded-3xl overflow-hidden relative shrink-0" style={{ background: "#DEDFFF", minHeight: 160 }}>
+      <div className="rounded-3xl overflow-hidden relative shrink-0" style={{ background: "linear-gradient(135deg, #E8E3F8 0%, #D8D0F0 40%, #C8BFE8 100%)", minHeight: 160, boxShadow: "0 4px 20px rgba(103,75,179,0.1)" }}>
         {/* Ribbon decoration left */}
         <img src={`${B}/ribbon-left.svg`} className="absolute -left-2 bottom-0 h-14 opacity-50" alt="" />
         {/* 3D illustration right — overflows bottom */}
@@ -84,7 +84,12 @@ export default function Overview() {
           </div>
           <div className="flex gap-2 mt-4">
             <button onClick={() => navigate("/onc/register")}
-              className="group/btn flex items-center gap-2 px-6 py-3 bg-[#674BB3] text-white text-sm font-semibold rounded-xl hover:bg-[#563AA4] transition-colors">
+              className="group/btn flex items-center gap-2 px-6 py-3 text-white text-sm font-semibold rounded-xl cursor-pointer hover:brightness-110 active:scale-[0.97] transition-all"
+              style={{
+                background: "linear-gradient(145deg, #8B6FD4 0%, #674BB3 40%, #563AA4 100%)",
+                boxShadow: "0 6px 20px rgba(103,75,179,0.35), inset 0 1.5px 0 rgba(255,255,255,0.25), inset 0 -1.5px 0 rgba(0,0,0,0.1)",
+                border: "1px solid rgba(255,255,255,0.12)",
+              }}>
               <UserPlus size={18} /> ลงทะเบียนผู้ป่วยใหม่
             </button>
           </div>
@@ -95,8 +100,12 @@ export default function Overview() {
       <div className="grid grid-cols-5 gap-4 shrink-0">
         {pipeline.map((s, i) => (
           <div key={i}
-            className="bg-white rounded-2xl p-4 text-left overflow-hidden relative"
-            style={{ boxShadow: "0 1px 4px rgba(0,0,0,0.04)" }}>
+            className="rounded-2xl p-4 text-left overflow-hidden relative"
+            style={{
+              background: "linear-gradient(145deg, #ffffff 0%, #f8f7fc 100%)",
+              boxShadow: "0 4px 16px rgba(103,75,179,0.08), inset 0 1px 0 rgba(255,255,255,0.8)",
+              border: "1px solid rgba(103,75,179,0.06)",
+            }}>
             <p className="text-sm" style={{ color: s.color + "cc" }}>{s.sublabel}</p>
             <p className="text-3xl font-bold mt-1" style={{ color: s.color }}>{s.count}</p>
             {/* Illustration */}
@@ -106,7 +115,7 @@ export default function Overview() {
       </div>
 
       {/* ── Patient Table Card ── */}
-      <div className="bg-white rounded-3xl overflow-hidden flex-1 min-h-0 flex flex-col" style={{ boxShadow: "0 1px 4px rgba(0,0,0,0.04)" }}>
+      <div className="rounded-3xl overflow-hidden flex-1 min-h-0 flex flex-col" style={{ background: "linear-gradient(180deg, #ffffff 0%, #faf9fc 100%)", boxShadow: "0 4px 16px rgba(103,75,179,0.08), inset 0 1px 0 rgba(255,255,255,0.8)", border: "1px solid rgba(103,75,179,0.06)" }}>
         {/* Filter + Search inside card */}
         <div className="flex items-center gap-3 px-4 pt-4 pb-3 shrink-0">
           <div className="relative w-64">
@@ -124,7 +133,10 @@ export default function Overview() {
                     ? "text-white"
                     : "text-[#898989] hover:bg-gray-100"
                 }`}
-                style={statusFilter === f.value ? { background: f.color ?? "#674BB3" } : {}}>
+                style={statusFilter === f.value ? {
+                  background: `linear-gradient(145deg, ${f.color ?? "#674BB3"}cc, ${f.color ?? "#674BB3"})`,
+                  boxShadow: `0 3px 10px ${f.color ?? "#674BB3"}40, inset 0 1px 0 rgba(255,255,255,0.25)`,
+                } : {}}>
                 {f.label}
               </button>
             ))}

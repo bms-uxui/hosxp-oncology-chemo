@@ -12,7 +12,7 @@ const ecogDefinitions = [
 
 export default function CancerProfileBanner({ pt }: { pt: { diagnosis: string; icd10: string; stage: string; t: string; n: string; m: string; ecog: number; morphology: string } }) {
   return (
-    <div className="relative rounded-2xl px-6 py-5 overflow-hidden" style={{ background: "linear-gradient(135deg, #EDE9F6 0%, #D8D0F0 50%, #C8BFE8 100%)" }}>
+    <div className="relative rounded-2xl px-6 py-5 overflow-hidden" style={{ background: "linear-gradient(135deg, #E8E3F8 0%, #D8D0F0 40%, #C8BFE8 100%)", boxShadow: "0 4px 20px rgba(103,75,179,0.1)" }}>
       <div className="relative z-10 max-w-[65%]">
         <p className="text-sm text-[#674BB3]/70 font-medium">{pt.diagnosis} · {pt.icd10}</p>
         <div className="flex items-end gap-2 mt-1">

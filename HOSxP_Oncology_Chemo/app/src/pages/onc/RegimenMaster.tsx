@@ -296,7 +296,7 @@ export default function RegimenMaster() {
         {/* ── Row 1: Stacked header cards ── */}
         <div className="shrink-0 rounded-2xl overflow-hidden bg-white" style={{ boxShadow: "0 1px 4px rgba(0,0,0,0.04)" }}>
           {/* Top — purple banner */}
-          <div className="px-6 py-5 rounded-2xl relative overflow-hidden" style={{ background: "linear-gradient(135deg, #D8D0F0 0%, #C8BFE8 100%)" }}>
+          <div className="px-6 py-5 rounded-2xl relative overflow-hidden" style={{ background: "linear-gradient(135deg, #E8E3F8 0%, #D8D0F0 40%, #C8BFE8 100%)", boxShadow: "none" }}>
             <img src={`${BASE}onc/chemo-hand.png`} className="absolute right-4 -bottom-6 h-36 object-contain pointer-events-none opacity-70" alt="" />
             {/* Top-right action buttons */}
             <div className="absolute top-4 right-4 z-10 flex flex-col gap-2">
@@ -334,7 +334,7 @@ export default function RegimenMaster() {
                   <label className="text-xs font-semibold text-[#674BB3]/60 mt-3 mb-1 block">รหัส Protocol</label>
                   <input value={selected.code} onChange={e => updateRegimen({ ...selected, code: e.target.value })}
                     placeholder="กรอกรหัสย่อ เช่น CAF, FOLFOX6"
-                    className="bg-white/60 backdrop-blur-sm text-2xl font-bold text-[#674BB3] px-3 py-1 rounded-lg border border-[#674BB3]/20 focus:border-[#674BB3] focus:ring-1 focus:ring-[#674BB3] outline-none w-48" />
+                    className="bg-white/60 backdrop-blur-sm text-2xl font-bold text-[#674BB3] placeholder:text-sm placeholder:font-normal placeholder:text-[#674BB3]/30 px-3 py-1 rounded-lg border border-[#674BB3]/20 focus:border-[#674BB3] focus:ring-1 focus:ring-[#674BB3] outline-none w-48" />
                 </>
               ) : (
                 <>
@@ -708,7 +708,7 @@ export default function RegimenMaster() {
     <div className="flex flex-col h-[calc(100vh-2rem)] space-y-4 overflow-hidden">
 
       {/* ── Banner (same style as Overview) ── */}
-      <div className="rounded-3xl overflow-hidden relative shrink-0" style={{ background: "#DEDFFF", minHeight: 140 }}>
+      <div className="rounded-3xl overflow-hidden relative shrink-0" style={{ background: "linear-gradient(135deg, #E8E3F8 0%, #D8D0F0 40%, #C8BFE8 100%)", minHeight: 140, boxShadow: "0 4px 20px rgba(103,75,179,0.1)" }}>
         <img src={`${BASE}onc/ribbon-left.svg`} className="absolute -left-2 bottom-0 h-14 opacity-50" alt="" />
         <img src={`${BASE}onc/chemo-hand.png`} className="absolute right-4 -bottom-4 h-44 object-contain" alt="" />
         <div className="relative z-10 px-8 py-6">
@@ -733,7 +733,7 @@ export default function RegimenMaster() {
           { label: "Inactive", count: regimens.filter(r => !r.active).length, color: "#64748b" },
           { label: "ชนิดมะเร็ง", count: new Set(regimens.map(r => r.cancer)).size, color: "#6366f1" },
         ].map((s, i) => (
-          <div key={i} className="bg-white rounded-2xl p-4" style={{ boxShadow: "0 1px 4px rgba(0,0,0,0.04)" }}>
+          <div key={i} className="rounded-2xl p-4" style={{ background: "linear-gradient(145deg, #ffffff 0%, #f8f7fc 100%)", boxShadow: "0 4px 16px rgba(103,75,179,0.08), inset 0 1px 0 rgba(255,255,255,0.8)", border: "1px solid rgba(103,75,179,0.06)" }}>
             <p className="text-sm text-[#898989]">{s.label}</p>
             <p className="text-3xl font-bold mt-1" style={{ color: s.color }}>{s.count}</p>
           </div>
@@ -741,7 +741,7 @@ export default function RegimenMaster() {
       </div>
 
       {/* ── Regimen Table Card ── */}
-      <div className="bg-white rounded-3xl overflow-hidden flex-1 min-h-0 flex flex-col" style={{ boxShadow: "0 1px 4px rgba(0,0,0,0.04)" }}>
+      <div className="rounded-3xl overflow-hidden flex-1 min-h-0 flex flex-col" style={{ background: "linear-gradient(180deg, #ffffff 0%, #faf9fc 100%)", boxShadow: "0 4px 16px rgba(103,75,179,0.08), inset 0 1px 0 rgba(255,255,255,0.8)", border: "1px solid rgba(103,75,179,0.06)" }}>
         {/* Filter + Search */}
         <div className="flex items-center gap-3 px-4 pt-4 pb-3 shrink-0">
           <div className="relative w-64">
@@ -761,7 +761,10 @@ export default function RegimenMaster() {
                 className={`text-xs font-semibold px-3 py-1.5 rounded-full transition-all ${
                   filterActive === f.value ? "text-white" : "text-[#898989] hover:bg-gray-100"
                 }`}
-                style={filterActive === f.value ? { background: f.color } : {}}>
+                style={filterActive === f.value ? {
+                  background: `linear-gradient(145deg, ${f.color}cc, ${f.color})`,
+                  boxShadow: `0 3px 10px ${f.color}40, inset 0 1px 0 rgba(255,255,255,0.25)`,
+                } : {}}>
                 {f.label}
               </button>
             ))}

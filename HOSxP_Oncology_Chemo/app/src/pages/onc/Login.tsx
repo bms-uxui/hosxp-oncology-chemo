@@ -50,8 +50,8 @@ export default function Login() {
       />
 
       {/* ── Bottom purple gradient ── */}
-      <div className="absolute bottom-0 left-0 right-0 h-[40%] pointer-events-none"
-        style={{ background: "linear-gradient(to top, rgba(103,75,179,0.08), transparent)" }} />
+      <div className="absolute bottom-0 left-0 right-0 h-[50%] pointer-events-none"
+        style={{ background: "radial-gradient(ellipse at 50% 100%, rgba(103,75,179,0.06) 0%, transparent 70%)" }} />
 
       {/* ── Main flex container ── */}
       <div className="relative z-10 min-h-screen flex items-center justify-center max-w-7xl mx-auto px-8 xl:px-16 gap-12 xl:gap-20">
@@ -60,11 +60,13 @@ export default function Login() {
         <div className="flex-1 flex flex-col justify-center py-12 max-w-[540px]">
           <div className="inline-flex items-center gap-1.5 rounded-full px-5 py-2.5 mb-8 w-fit text-sm text-text"
             style={{
-              background: "rgba(103,75,179,0.1)",
-              border: "1px solid rgba(103,75,179,0.15)",
+              background: "linear-gradient(135deg, rgba(255,255,255,0.5) 0%, rgba(200,191,232,0.25) 100%)",
+              border: "1px solid rgba(255,255,255,0.6)",
+              boxShadow: "0 4px 16px rgba(103,75,179,0.08), inset 0 1px 2px rgba(255,255,255,0.7)",
+              backdropFilter: "blur(12px)",
               ...fadeUp(0.1),
             }}>
-            ขับเคลื่อนโดย <span className="font-bold text-onc mx-1">BMS</span> — ภายใต้ระบบนิเวศคลินิก <span className="font-bold text-text ml-1">HOSxP</span>
+            ระบบจัดการยาเคมีบำบัดครบวงจร
           </div>
 
           <h1 className="text-[40px] xl:text-[46px] font-extrabold text-navy leading-tight mb-5"
@@ -80,8 +82,13 @@ export default function Login() {
           </p>
 
           <button onClick={handleLogin} disabled={loading}
-            className="relative overflow-hidden flex items-center gap-3 px-8 py-3.5 rounded-full text-base font-bold text-white cursor-pointer hover:bg-[#563AA4] active:scale-[0.98] transition-all w-fit"
-            style={{ background: "#674BB3", ...fadeUp(0.55) }}>
+            className="relative overflow-hidden flex items-center gap-3 px-8 py-4 rounded-full text-base font-bold text-white cursor-pointer active:scale-[0.97] transition-all w-fit"
+            style={{
+              background: "linear-gradient(145deg, #8B6FD4 0%, #674BB3 40%, #563AA4 100%)",
+              boxShadow: "0 8px 28px rgba(103,75,179,0.4), 0 2px 8px rgba(103,75,179,0.2), inset 0 1.5px 0 rgba(255,255,255,0.3), inset 0 -1.5px 0 rgba(0,0,0,0.1)",
+              border: "1px solid rgba(255,255,255,0.15)",
+              ...fadeUp(0.55),
+            }}>
             {loading ? (
               <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
             ) : (
@@ -101,7 +108,7 @@ export default function Login() {
 
         {/* ════ RIGHT SIDE — Hero grid (7 parts) ════ */}
         <div className="hidden lg:flex flex-1 items-center justify-center">
-          <div className="relative w-80 xl:w-96 pointer-events-none select-none" style={{ aspectRatio: "372 / 464" }}>
+          <div className="relative w-80 xl:w-[420px] pointer-events-none select-none" style={{ aspectRatio: "372 / 464" }}>
             {/* White glow behind hero */}
             <div className="absolute -inset-12 rounded-full"
               style={{ background: "radial-gradient(circle, rgba(255,255,255,0.85) 0%, rgba(255,255,255,0) 70%)", filter: "blur(20px)" }} />
@@ -109,24 +116,48 @@ export default function Login() {
               { name: "doctor",   x: 0,   y: 0,   w: 248, h: 136, delay: 0.2  },
               { name: "workflow", x: 248, y: 0,   w: 124, h: 200, delay: 0.32 },
               { name: "nurse",    x: 0,   y: 136, w: 124, h: 204, delay: 0.44 },
-              { name: "bms",      x: 124, y: 136, w: 124, h: 124, delay: 0.56 },
-              { name: "tablet",   x: 248, y: 200, w: 124, h: 252, delay: 0.68 },
+              { name: "bms",      x: 124, y: 136, w: 124, h: 124, delay: 0.56, isLogo: true },
+              { name: "tablet",   x: 248, y: 200, w: 124, h: 264, delay: 0.68 },
               { name: "iv",       x: 0,   y: 340, w: 124, h: 124, delay: 0.80 },
               { name: "team",     x: 124, y: 260, w: 124, h: 204, delay: 0.92 },
             ].map((s) => (
-              <img
-                key={s.name}
-                src={`${BASE}onc/login-hero/${s.name}.svg`}
-                alt=""
-                className="absolute"
-                style={{
-                  left:   `${(s.x / 372) * 100}%`,
-                  top:    `${(s.y / 464) * 100}%`,
-                  width:  `${(s.w / 372) * 100}%`,
-                  height: `${(s.h / 464) * 100}%`,
-                  ...fadeUp(s.delay),
-                }}
-              />
+              (s as any).isLogo ? (
+                <div
+                  key={s.name}
+                  className="absolute flex items-center justify-center"
+                  style={{
+                    left:   `${(s.x / 372) * 100}%`,
+                    top:    `${(s.y / 464) * 100}%`,
+                    width:  `${(s.w / 372) * 100}%`,
+                    height: `${(s.h / 464) * 100}%`,
+                    ...fadeUp(s.delay),
+                  }}
+                >
+                  <div className="w-full h-full rounded-full flex items-center justify-center p-1"
+                    style={{
+                      background: "linear-gradient(145deg, rgba(255,255,255,0.8) 0%, rgba(200,191,232,0.4) 50%, rgba(103,75,179,0.15) 100%)",
+                      boxShadow: "0 8px 32px rgba(103,75,179,0.25), inset 0 2px 4px rgba(255,255,255,0.8), inset 0 -2px 6px rgba(103,75,179,0.15)",
+                      border: "1.5px solid rgba(255,255,255,0.6)",
+                      backdropFilter: "blur(8px)",
+                    }}>
+                    <img src={`${BASE}onc/logo.png`} alt="" className="w-[85%] h-[85%] object-contain drop-shadow-sm" />
+                  </div>
+                </div>
+              ) : (
+                <img
+                  key={s.name}
+                  src={`${BASE}onc/login-hero/${s.name}.svg`}
+                  alt=""
+                  className="absolute object-contain"
+                  style={{
+                    left:   `${(s.x / 372) * 100}%`,
+                    top:    `${(s.y / 464) * 100}%`,
+                    width:  `${(s.w / 372) * 100}%`,
+                    height: `${(s.h / 464) * 100}%`,
+                    ...fadeUp(s.delay),
+                  }}
+                />
+              )
             ))}
           </div>
         </div>
