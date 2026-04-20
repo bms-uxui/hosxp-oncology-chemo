@@ -157,6 +157,7 @@ export default function PharmVerify({ embedded, patientHN, patientData }: { embe
   // Auto-select first order for this patient when embedded
   const effectiveSelectedId = embedded ? (filtered[0]?.id ?? null) : selectedId;
   const selected = orders.find(o => o.id === effectiveSelectedId);
+  const selectedStatus: OrderStatus | undefined = selected?.status;
   const hasLabIssue = selected?.labs.some(l => !l.ok) ?? false;
   const pendingCount = orders.filter(o => o.status === "SUBMITTED").length;
 
@@ -274,7 +275,7 @@ export default function PharmVerify({ embedded, patientHN, patientData }: { embe
 
   if (pin.length === 6 && showPin) { setTimeout(() => handlePinComplete(pin), 300); }
 
-  const pharmStepIndex = selected?.status === "SUBMITTED" ? 0 : selected?.status === "PREPARING" ? 0 : selected?.status === "PREPARED" ? 1 : selected?.status === "REJECTED" ? -1 : 0;
+  const pharmStepIndex = (() => { const s = selectedStatus; if (s === "SUBMITTED" || s === "PREPARING") return 0; if (s === "PREPARED") return 1; if (s === "REJECTED") return -1; return 0; })();
 
   const pinLabel = pinAction === "compound" ? "ลงนามเตรียมยา" : "ยืนยันปฏิเสธ";
   const pinDropdown = (
@@ -312,10 +313,10 @@ export default function PharmVerify({ embedded, patientHN, patientData }: { embe
     return (
       <>
         {/* Stepper — sticky */}
-        {selected.status !== "REJECTED" && !preparingShimmer && (
+        {selectedStatus !== "REJECTED" && !preparingShimmer && (
         <div className="rounded-2xl border-[0.1px] border-border-card p-5 mb-4 sticky top-0 z-10 backdrop-blur-md bg-white/70" style={{ boxShadow: "0 1px 4px rgba(0,0,0,0.04)" }}>
           <div>
-            {selected.status !== "REJECTED" ? (
+            {selectedStatus !== "REJECTED" ? (
               <MuiStepper activeStep={pharmStepIndex} alternativeLabel connector={<PharmConnector />}
                 sx={{ "& .MuiStep-root": { p: 0 } }}>
                 {PHARM_STEPS.map((label, i) => (
@@ -342,18 +343,18 @@ export default function PharmVerify({ embedded, patientHN, patientData }: { embe
         )}
 
         {/* Step title + actions */}
-        {selected.status !== "REJECTED" && !preparingShimmer && (
+        {selectedStatus !== "REJECTED" && !preparingShimmer && (
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-sm font-bold text-text">
-              {selected.status === "PREPARED" ? "ยาพร้อม" : showCompForm ? "ตรวจสอบผ่าน — กรอกข้อมูลเตรียมยา" : "ตรวจสอบคำสั่งยา"}
+              {selectedStatus === "PREPARED" ? "ยาพร้อม" : showCompForm ? "ตรวจสอบผ่าน — กรอกข้อมูลเตรียมยา" : "ตรวจสอบคำสั่งยา"}
             </h2>
             <p className="text-xs text-text-secondary mt-0.5">
-              {selected.status === "PREPARED" ? "เตรียมยาเสร็จสิ้น พร้อมส่งให้พยาบาลให้ยา" : showCompForm ? "กรอก Lot/Expiry/Qty แล้วลงนามเพื่อยืนยัน" : "ตรวจสอบรายการยา ขนาดยา และผล Lab ก่อนดำเนินการ"}
+              {selectedStatus === "PREPARED" ? "เตรียมยาเสร็จสิ้น พร้อมส่งให้พยาบาลให้ยา" : showCompForm ? "กรอก Lot/Expiry/Qty แล้วลงนามเพื่อยืนยัน" : "ตรวจสอบรายการยา ขนาดยา และผล Lab ก่อนดำเนินการ"}
             </p>
           </div>
           <div className="flex items-center gap-2 shrink-0">
-            {selected.status === "SUBMITTED" && !showCompForm && (<>
+            {selectedStatus === "SUBMITTED" && !showCompForm && (<>
               <button onClick={() => initAction("reject")}
                 className="flex items-center gap-1.5 px-3 py-2 text-sm font-semibold text-red-500 border border-red-200 rounded-lg hover:bg-red-50 active:scale-95 transition-all">
                 <XCircle size={14} /> ปฏิเสธ
@@ -366,7 +367,7 @@ export default function PharmVerify({ embedded, patientHN, patientData }: { embe
                 <CheckCircle2 size={14} /> ตรวจสอบผ่าน
               </button>
             </>)}
-            {(selected.status === "PREPARING" || showCompForm) && (
+            {(selectedStatus === "PREPARING" || showCompForm) && (
               <div className="relative">
                 <button onClick={() => initAction("compound")} disabled={!allCompFilled}
                   className={`flex items-center gap-1.5 px-4 py-2 text-sm font-bold rounded-lg active:scale-95 transition-all ${
@@ -406,7 +407,7 @@ export default function PharmVerify({ embedded, patientHN, patientData }: { embe
         )}
 
         {/* 2-col: Document (left) + Info sidebar (right) */}
-        {(selected.status === "SUBMITTED" || selected.status === "PREPARING" || selected.status === "REJECTED") && !preparingShimmer && (() => {
+        {(selectedStatus === "SUBMITTED" || selectedStatus === "PREPARING" || selectedStatus === "REJECTED") && !preparingShimmer && (() => {
           const p = patientData;
           return (
           <div className="flex gap-4 min-h-0 flex-1">
@@ -577,10 +578,10 @@ export default function PharmVerify({ embedded, patientHN, patientData }: { embe
 
             {/* Right: Safety gates + Compounding cards */}
             <div className="w-96 shrink-0 overflow-y-auto overflow-x-hidden space-y-3">
-              {selected.status === "SUBMITTED" && !showCompForm && (
+              {selectedStatus === "SUBMITTED" && !showCompForm && (
                 <SafetyGatePanel verification={verification} onOverride={handleGateOverride} />
               )}
-              {selected.status === "REJECTED" && (
+              {selectedStatus === "REJECTED" && (
                 <div className={`${card} flex items-center gap-3`}>
                   <XCircle size={18} className="text-red-500 shrink-0" />
                   <div>
@@ -591,7 +592,7 @@ export default function PharmVerify({ embedded, patientHN, patientData }: { embe
               )}
 
               {/* Compounding cards — one per chemo drug */}
-              {showCompForm && selected.status === "PREPARING" && (() => {
+              {showCompForm && selectedStatus === "PREPARING" && (() => {
                 const chemoItems = selected.items.filter(d => d.classification === "chemotherapy");
                 const filledCount = chemoItems.filter(i => i.lotNo && i.expiryDate && i.preparedQty > 0).length;
                 return (
@@ -736,7 +737,7 @@ export default function PharmVerify({ embedded, patientHN, patientData }: { embe
           )}
 
           {/* Status results */}
-          {selected.status === "PREPARED" && !preparingShimmer && (
+          {selectedStatus === "PREPARED" && !preparingShimmer && (
             <div className="space-y-4">
               <div className={`${card} flex items-center gap-4`}>
                 <CheckCircle2 size={20} className="text-emerald-500" />
