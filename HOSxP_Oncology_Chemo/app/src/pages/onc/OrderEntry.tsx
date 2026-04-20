@@ -133,10 +133,10 @@ function formatAge(dob: string): string {
 
 /* ── Patients (aligned with PatientSummary data) ── */
 const patientList = [
-  { hn: "104365", name: "นางคำปุ่น เสนาหอย", gender: "หญิง", dob: "1969-01-15", weight: 48, height: 146, icd10: "C50.9", diagnosis: "Breast Cancer", stage: "IIIA", t: "3", n: "1", m: "0", morphology: "Invasive ductal carcinoma, NOS", ecog: 1, allergy: "Penicillin", creatinine: 0.8, crcl: 72, bsa: 1.40 },
-  { hn: "205471", name: "นายบุญมี ดีใจ", gender: "ชาย", dob: "1958-05-03", weight: 65, height: 168, icd10: "C18.2", diagnosis: "Colorectal Cancer", stage: "IV", t: "3", n: "2", m: "0", morphology: "Adenocarcinoma, NOS", ecog: 2, allergy: "Sulfa", creatinine: 1.1, crcl: 58, bsa: 1.74 },
-  { hn: "308892", name: "นางเพ็ญ ใจสว่าง", gender: "หญิง", dob: "1964-08-22", weight: 55, height: 158, icd10: "C56.9", diagnosis: "Ovarian Cancer", stage: "IIB", t: "3", n: "0", m: "0", morphology: "Serous carcinoma, high grade", ecog: 1, allergy: "—", creatinine: 0.9, crcl: 85, bsa: 1.55 },
-  { hn: "412230", name: "นายสมศักดิ์ ชัยมงคล", gender: "ชาย", dob: "1953-11-10", weight: 58, height: 162, icd10: "C34.1", diagnosis: "Lung Cancer", stage: "III", t: "2", n: "1", m: "0", morphology: "Squamous cell carcinoma", ecog: 2, allergy: "Aspirin", creatinine: 1.2, crcl: 52, bsa: 1.62 },
+  { hn: "104365", name: "นางคำปุ่น เสนาหอย", gender: "หญิง", dob: "1969-01-15", weight: 48, height: 146, icd10: "C50.9", diagnosis: "Breast Cancer", stage: "IIIA", t: "3", n: "1", m: "0", morphology: "Invasive ductal carcinoma, NOS", ecog: 1, allergy: "Penicillin", creatinine: 0.8, crcl: 72, bsa: 1.40, currentCycle: 2 },
+  { hn: "205471", name: "นายบุญมี ดีใจ", gender: "ชาย", dob: "1958-05-03", weight: 65, height: 168, icd10: "C18.2", diagnosis: "Colorectal Cancer", stage: "IV", t: "3", n: "2", m: "0", morphology: "Adenocarcinoma, NOS", ecog: 2, allergy: "Sulfa", creatinine: 1.1, crcl: 58, bsa: 1.74, currentCycle: 5 },
+  { hn: "308892", name: "นางเพ็ญ ใจสว่าง", gender: "หญิง", dob: "1964-08-22", weight: 55, height: 158, icd10: "C56.9", diagnosis: "Ovarian Cancer", stage: "IIB", t: "3", n: "0", m: "0", morphology: "Serous carcinoma, high grade", ecog: 1, allergy: "—", creatinine: 0.9, crcl: 85, bsa: 1.55, currentCycle: 1 },
+  { hn: "412230", name: "นายสมศักดิ์ ชัยมงคล", gender: "ชาย", dob: "1953-11-10", weight: 58, height: 162, icd10: "C34.1", diagnosis: "Lung Cancer", stage: "III", t: "2", n: "1", m: "0", morphology: "Squamous cell carcinoma", ecog: 2, allergy: "Aspirin", creatinine: 1.2, crcl: 52, bsa: 1.62, currentCycle: 4 },
 ];
 
 type LabItem = { name: string; value: number; unit: string; ref: string; threshold: number; direction: "above" | "below"; date: string };

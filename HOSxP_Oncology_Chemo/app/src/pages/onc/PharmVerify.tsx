@@ -130,7 +130,7 @@ type PatientData = {
 export default function PharmVerify({ embedded, patientHN, patientData }: { embedded?: boolean; patientHN?: string; patientData?: PatientData }) {
   const { verifyPin, addNotification, addBillingRecord } = useOnc();
   const { toast } = useToast();
-  const [orders, setOrders] = useState(mockOrders);
+  const [orders, setOrders] = useState<Order[]>(mockOrders);
   const [selectedId, setSelectedId] = useState<string | null>("ORD-001");
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState<"ALL" | OrderStatus>("ALL");
