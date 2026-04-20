@@ -157,7 +157,7 @@ export default function PharmVerify({ embedded, patientHN, patientData }: { embe
   // Auto-select first order for this patient when embedded
   const effectiveSelectedId = embedded ? (filtered[0]?.id ?? null) : selectedId;
   const selected = orders.find(o => o.id === effectiveSelectedId);
-  const selectedStatus: OrderStatus | undefined = selected?.status;
+  const selectedStatus = selected?.status as OrderStatus | undefined;
   const hasLabIssue = selected?.labs.some(l => !l.ok) ?? false;
   const pendingCount = orders.filter(o => o.status === "SUBMITTED").length;
 
